@@ -1,0 +1,222 @@
+{
+  "version": "0.1.0",
+  "orthography": "CH-DE",
+  "entries": [
+    {
+      "wort": "Adresse",
+      "silben": [
+        "Ad",
+        "res",
+        "se"
+      ],
+      "erklaerung": "Die Adresse zeigt, wo eine Person wohnt oder wohin ein Brief soll.",
+      "beispiele": [
+        "Meine Adresse steht auf dem Couvert."
+      ],
+      "tags": [
+        "Alltag",
+        "Nomen"
+      ]
+    },
+    {
+      "wort": "Apfel",
+      "silben": [
+        "Ap",
+        "fel"
+      ],
+      "erklaerung": "Eine runde Frucht. Man kann sie roh essen.",
+      "beispiele": [
+        "Ich esse einen Apfel."
+      ],
+      "tags": [
+        "Lebensmittel",
+        "Nomen"
+      ]
+    },
+    {
+      "wort": "Schule",
+      "silben": [
+        "Schu",
+        "le"
+      ],
+      "erklaerung": "Ort, an dem Kinder und Jugendliche lernen.",
+      "beispiele": [
+        "Wir gehen morgens zur Schule."
+      ],
+      "tags": [
+        "Alltag",
+        "Ort"
+      ]
+    },
+    {
+      "wort": "kommen",
+      "silben": [
+        "kom",
+        "men"
+      ],
+      "erklaerung": "Sich auf jemanden oder etwas zubewegen.",
+      "beispiele": [
+        "Kommst du heute mit?"
+      ],
+      "tags": [
+        "Verb"
+      ]
+    },
+    {
+      "wort": "Fenster",
+      "silben": [
+        "Fen",
+        "ster"
+      ],
+      "erklaerung": "Öffnung in der Wand mit Glas, man kann hinausschauen.",
+      "beispiele": [
+        "Bitte mach das Fenster zu."
+      ],
+      "tags": [
+        "Gegenstand",
+        "Nomen"
+      ]
+    },
+    {
+      "wort": "Fluss",
+      "silben": [
+        "Fluss"
+      ],
+      "erklaerung": "Viel Wasser, das in eine Richtung fliesst.",
+      "beispiele": [
+        "Der Fluss ist nach dem Regen höher."
+      ],
+      "tags": [
+        "Natur",
+        "Nomen"
+      ]
+    },
+    {
+      "wort": "Masse",
+      "silben": [
+        "Mas",
+        "se"
+      ],
+      "erklaerung": "Wie schwer ein Körper ist. Einheit ist Kilogramm.",
+      "beispiele": [
+        "Die Masse wird in Kilogramm gemessen."
+      ],
+      "tags": [
+        "Physik",
+        "Nomen"
+      ]
+    },
+    {
+      "wort": "kalt",
+      "silben": [
+        "kalt"
+      ],
+      "erklaerung": "Das Gegenteil von warm.",
+      "beispiele": [
+        "Im Winter ist es kalt."
+      ],
+      "tags": [
+        "Adjektiv"
+      ]
+    },
+    {
+      "wort": "sagen",
+      "silben": [
+        "sa",
+        "gen"
+      ],
+      "erklaerung": "Mit Worten ausdrücken.",
+      "beispiele": [
+        "Ich sage die Wahrheit."
+      ],
+      "tags": [
+        "Verb"
+      ]
+    },
+    {
+      "wort": "Zug",
+      "silben": [
+        "Zug"
+      ],
+      "erklaerung": "Fahrzeug auf Schienen.",
+      "beispiele": [
+        "Der Zug kommt um acht Uhr."
+      ],
+      "tags": [
+        "Verkehr",
+        "Nomen"
+      ]
+    },
+    {
+      "wort": "Zebra",
+      "silben": [
+        "Ze",
+        "bra"
+      ],
+      "erklaerung": "Tier mit schwarzen und weissen Streifen.",
+      "beispiele": [
+        "Im Zoo gibt es ein Zebra."
+      ],
+      "tags": [
+        "Tier",
+        "Nomen"
+      ]
+    },
+    {
+      "wort": "Mut",
+      "silben": [
+        "Mut"
+      ],
+      "erklaerung": "Man traut sich etwas, obwohl es Angst macht.",
+      "beispiele": [
+        "Sie hatte Mut und meldete sich."
+      ],
+      "tags": [
+        "Gefühl",
+        "Nomen"
+      ]
+    },
+    {
+      "wort": "leicht",
+      "silben": [
+        "leicht"
+      ],
+      "erklaerung": "Nicht schwer. Gut zu tun.",
+      "beispiele": [
+        "Die Aufgabe ist leicht."
+      ],
+      "tags": [
+        "Adjektiv"
+      ]
+    },
+    {
+      "wort": "Strasse",
+      "silben": [
+        "Stras",
+        "se"
+      ],
+      "erklaerung": "Weg für Autos und Velos. In der Schweiz mit ss.",
+      "beispiele": [
+        "Die Strasse ist nass."
+      ],
+      "tags": [
+        "Alltag",
+        "Orthografie"
+      ]
+    },
+    {
+      "wort": "gross",
+      "silben": [
+        "gross"
+      ],
+      "erklaerung": "Nicht klein. In der Schweiz mit ss.",
+      "beispiele": [
+        "Der Hund ist gross."
+      ],
+      "tags": [
+        "Adjektiv",
+        "Orthografie"
+      ]
+    }
+  ]
+}
