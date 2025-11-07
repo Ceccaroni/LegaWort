@@ -170,11 +170,16 @@ h1{
   background: var(--btn-border-ink);
   color:#fff;
 }
-.btn.mic svg{
-  width:1.25em;
-  height:1.25em;
-  display:block;
+.btn.mic .icon {
+  width: 24px;
+  height: 24px;
+  display: inline-block;
+  color: var(--primary);
   fill: currentColor;
+}
+
+.btn.mic.rec .icon {
+  color: var(--secondary);
 }
 
 /* Toggles/Slider-Grids */

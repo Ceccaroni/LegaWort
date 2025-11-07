@@ -1,26 +1,5 @@
-<!-- assets/icons/microphone_flat.svg -->
-<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
-  <!-- regular (2.0 px) -->
-  <symbol id="icon-microphone-flat" viewBox="0 0 24 24">
-    <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <!-- Kapsel: oben rund, unten flach -->
-      <path d="M8 14.5V7a4 4 0 0 1 8 0v7.5H8"/>
-      <!-- Halterung -->
-      <path d="M6 12v1a6 6 0 0 0 12 0v-1"/>
-      <!-- Stiel & Fuss -->
-      <path d="M12 15v3.5M9 20.5h6"/>
-      <!-- Lamellen optional -->
-      <path d="M8.6 8.3H15.4M8.6 10.1H15.4"/>
-    </g>
-  </symbol>
-
-  <!-- strong (2.8 px) -->
-  <symbol id="icon-microphone-flat-strong" viewBox="0 0 24 24">
-    <g fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M8 14.5V7a4 4 0 0 1 8 0v7.5H8"/>
-      <path d="M6 12v1a6 6 0 0 0 12 0v-1"/>
-      <path d="M12 15v3.5M9 20.5h6"/>
-      <path d="M8.7 8.3H15.3M8.7 10.1H15.3"/>
-    </g>
+<svg xmlns="http://www.w3.org/2000/svg">
+  <symbol id="icon-microphone-web-24" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21H8v2h8v-2h-3v-2.08A7 7 0 0 0 19 12h-2Z"/>
   </symbol>
 </svg>
