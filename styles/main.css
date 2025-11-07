@@ -260,6 +260,9 @@ h1{
 
 /* Mikrofon-Button bleibt sekundär-stilisiert */
 .btn.mic{
+  display:flex;
+  align-items:center;
+  justify-content:center;
   border-color: var(--btn-border-ink);
   background:#fff;
   color: var(--primary);
