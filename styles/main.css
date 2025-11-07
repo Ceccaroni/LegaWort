@@ -181,6 +181,8 @@ h1{
 .btn.mic.rec .icon {
   color: var(--secondary);
 }
+.btn.mic .icon{ width:24px; height:24px; display:block; }
+.btn.mic use{ fill: currentColor; stroke: currentColor; }
 
 /* Toggles/Slider-Grids */
 .toggles, .sliders, .io{
