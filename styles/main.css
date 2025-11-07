@@ -1,6 +1,16 @@
 /* Legasthenie-Wörterbuch – CH-DE
-   Keine externen Ressourcen. Systemschrift.
+   Keine externen Ressourcen. Systemschrift + optionale OpenDyslexic lokal.
 */
+
+/* Lokale Dyslexie-Schrift einbinden */
+@font-face{
+  font-family: "OpenDyslexic";
+  src: url("../assets/fonts/OpenDyslexic-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root{
   --bg: #f8f8fa;
   --fg: #151515;
@@ -14,11 +24,9 @@
   --lh: 1.8;
 }
 
-*{box-sizing:border-box}
+*{ box-sizing:border-box }
 
-html,body{
-  height:100%;
-}
+html,body{ height:100% }
 
 body{
   margin:0;
@@ -27,6 +35,19 @@ body{
   color:var(--fg);
   letter-spacing: var(--ls);
   line-height: var(--lh);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Dyslexie-Modus: echte Schrift + Lesekomfort */
+body.dys{
+  font-family: "OpenDyslexic", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  letter-spacing: .055em;
+}
+body.dys .definition,
+body.dys .example,
+body.dys .card h2{
+  line-height: 1.7;
 }
 
 .app-header{
@@ -38,7 +59,8 @@ body{
 }
 
 h1{
-  margin:4px 0 8px; font-size: clamp(22px, 2.4vw, 28px);
+  margin:4px 0 8px;
+  font-size: clamp(22px, 2.4vw, 28px);
   display:flex; align-items:baseline; gap:10px;
 }
 
@@ -70,8 +92,10 @@ h1{
 }
 
 .card{
-  background: var(--card); border-radius: var(--radius);
-  padding: 14px 14px 12px; box-shadow: var(--shadow);
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 14px 14px 12px;
+  box-shadow: var(--shadow);
   border:1px solid #ececf0;
 }
 
@@ -122,10 +146,6 @@ body.contrast .card{ background:#0a0a0a; border-color:#222; }
 body.contrast .controls .search{ background:#0a0a0a; color:#fff; border-color:#333; }
 body.contrast .tag{ border-color:#333; background:#111; color:#ddd; }
 
-/* Dyslexie-Modus (nur CSS-Heuristik) */
-body.dys{ letter-spacing: .055em; }
-body.dys .definition, body.dys .example, body.dys .card h2 { line-height: 1.7; }
-
 /* Lernwörter-Panel */
 .learn{
   margin: 10px clamp(12px,2vw,24px) 40px;
@@ -139,7 +159,10 @@ body.dys .definition, body.dys .example, body.dys .card h2 { line-height: 1.7; }
 .learn-actions{display:flex; gap:8px; flex-wrap:wrap;}
 .learn-list{ margin: 10px 0 0; padding-left: 22px; }
 .learn-list li{ margin: 6px 0; }
-.learn-list .rm{ margin-left:6px; font-size:12px; border:1px solid #dcdde2; padding:2px 6px; border-radius:8px; background:#fff; }
+.learn-list .rm{
+  margin-left:6px; font-size:12px; border:1px solid #dcdde2;
+  padding:2px 6px; border-radius:8px; background:#fff;
+}
 
 /* Print: Karten kompakt; Lernwörter weg */
 @media print{
