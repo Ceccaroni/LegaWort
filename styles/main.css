@@ -148,6 +148,16 @@ h1{
   color: var(--primary);
 }
 .btn.mic:hover{ background:#F2F8FF; }
+.btn.mic.rec{
+  background: var(--btn-border-ink);
+  color:#fff;
+}
+.btn.mic svg{
+  width:1.25em;
+  height:1.25em;
+  display:block;
+  fill: currentColor;
+}
 
 /* Toggles/Slider-Grids */
 .toggles, .sliders, .io{
