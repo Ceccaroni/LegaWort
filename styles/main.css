@@ -175,24 +175,13 @@ h1{
   height: 24px;
   display: inline-block;
   color: var(--primary);
-  fill: currentColor;
+  background-color: currentColor;
+  -webkit-mask: url("assets/icons/microphone_web_24.svg") no-repeat center / contain;
+  mask: url("assets/icons/microphone_web_24.svg") no-repeat center / contain;
 }
 
 .btn.mic.rec .icon {
   color: var(--secondary);
-   .btn.mic .icon{ width:24px; height:24px; display:block; }
-.btn.mic use{ fill: currentColor; stroke: currentColor; }
-}
-/* Mic-Icon im Button */
-.btn.mic .icon{
-  width:24px;
-  height:24px;
-  display:block;
-}
-
-.btn.mic .icon use{
-  fill: currentColor;
-  stroke: currentColor;
 }
 
 /* Toggles/Slider-Grids */
