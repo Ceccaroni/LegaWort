@@ -54,6 +54,9 @@ const rulerEl = $('#ruler');
   // Settings
   hydrateSettings();
 
+  // Sicherheits-Top-Layer für das Lineal (sichtbar über Karten/Header)
+  if (rulerEl) { rulerEl.style.zIndex = '9999'; }
+
   // Initial: leer – erst nach Suche
   render([]);
   hydrateLearn();
@@ -67,7 +70,14 @@ const rulerEl = $('#ruler');
   $('#toggle-ruler').addEventListener('change', (e)=>{
     state.ruler = e.target.checked;
     rulerEl.hidden = !state.ruler;
+
     if (state.ruler) {
+      // Feste Basis-Positionierung sicherstellen (Browser-Defaults neutralisieren)
+      rulerEl.style.position = 'fixed';
+      rulerEl.style.left = '0';
+      rulerEl.style.right = '0';
+      rulerEl.style.zIndex = '9999';
+
       // Einmalige sinnvolle Startposition setzen
       const h = rulerEl.getBoundingClientRect().height || 36;
       const y = Math.max(0, (window.innerHeight * 0.40) - h / 2);
