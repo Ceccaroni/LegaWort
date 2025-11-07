@@ -11,6 +11,8 @@ const state = {
   ruler: false,
   ls: 3,
   lh: 18,
+  lastResults: [],
+  lastQuery: '',
   learnWords: [],
   // Grossdatensatz via Prefix-Chunks (optional)
   chunkIndex: null,        // { prefixLen: 2, prefixes: { "aa": "aa.json", ... } }
@@ -63,19 +65,23 @@ const rulerEl = $('#ruler');
 
   // UI
   $('#q').addEventListener('input', onSearch);
+  $('#toggle-syll').addEventListener('change', (e)=>{
+    state.showSyll = e.target.checked;
+    render(state.lastResults, state.lastQuery);
+    saveSettings();
+  });
   $('#toggle-dys').addEventListener('change', (e)=>{
-  state.dys = e.target.checked;
-  document.body.classList.toggle('dys', state.dys);
-  doSearch($('#q').value);   // statt render();
-  saveSettings();
-});
-
-  $('#toggle-dys').addEventListener('change', (e)=>{ state.dys = e.target.checked; document.body.classList.toggle('dys', state.dys); saveSettings(); });
+    state.dys = e.target.checked;
+    document.body.classList.toggle('dys', state.dys);
+    render(state.lastResults, state.lastQuery);
+    saveSettings();
+  });
   $('#toggle-contrast').addEventListener('change', (e)=>{ state.contrast = e.target.checked; document.body.classList.toggle('contrast', state.contrast); saveSettings(); });
 
   $('#toggle-ruler').addEventListener('change', (e)=>{
     state.ruler = e.target.checked;
     rulerEl.hidden = !state.ruler;
+    rulerEl.setAttribute('aria-hidden', String(!state.ruler));
 
     if (state.ruler) {
       // Feste Basis-Positionierung sicherstellen (Browser-Defaults neutralisieren)
@@ -120,9 +126,11 @@ const rulerEl = $('#ruler');
     const y = Math.max(0, Math.min(window.innerHeight - h, y0 - h/2));
     rulerEl.style.top = y + 'px';
   }
-  window.addEventListener('pointermove', onPointerMove, { passive: true });
-  window.addEventListener('mousemove',    onPointerMove, { passive: true });
-  window.addEventListener('touchmove',    onPointerMove, { passive: false });
+  [document, window].forEach(target => {
+    target.addEventListener('pointermove', onPointerMove, { passive: true });
+    target.addEventListener('mousemove',    onPointerMove, { passive: true });
+  });
+  document.addEventListener('touchmove',    onPointerMove, { passive: false });
 })();
 
 function hydrateSettings(){
@@ -136,12 +144,15 @@ function hydrateSettings(){
 
   // Immer mit ausgeschaltetem Leselineal starten (Policy)
   state.ruler = false;
+  state.lastResults = [];
+  state.lastQuery = '';
 
   $('#toggle-syll').checked = state.showSyll;
   $('#toggle-dys').checked = state.dys;
   $('#toggle-contrast').checked = state.contrast;
   $('#toggle-ruler').checked = false;          // Checkbox sicher "off"
   rulerEl.hidden = true;                       // Lineal verstecken
+  rulerEl.setAttribute('aria-hidden', 'true');
 
   document.body.classList.toggle('dys', state.dys);
   document.body.classList.toggle('contrast', state.contrast);
@@ -304,7 +315,9 @@ function distance(a,b){
 
 /* Rendering */
 function render(list, query=''){
-  const items = (list || []);
+  const items = Array.isArray(list) ? list.slice() : [];
+  state.lastResults = items;
+  state.lastQuery = typeof query === 'string' ? query : '';
   resultsEl.innerHTML = '';
   if(items.length === 0){
     resultsEl.innerHTML = `<div class="card"><h2>Suche starten</h2><p class="definition">Gib mindestens zwei Buchstaben ein. Es werden nur Treffer angezeigt, nicht das ganze Wörterbuch.</p></div>`;
@@ -443,6 +456,8 @@ function setupSpeechSearch(){
   const micBtn = document.getElementById('btn-mic');
   if(!micBtn) return;
 
+  micBtn.setAttribute('aria-pressed', 'false');
+
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR){
     micBtn.disabled = true;
@@ -450,51 +465,101 @@ function setupSpeechSearch(){
     return;
   }
 
-  const rec = new SR();
-  rec.lang = 'de-CH';
-  rec.interimResults = false;
-  rec.maxAlternatives = 1;
-
+  let rec = null;
   let active = false;
 
-  function start(){
-    try{
-      rec.lang = navigator.language && /^de-CH/i.test(navigator.language) ? 'de-CH' : 'de-DE';
-      rec.start();
-    }catch(_){}
-  }
-  function stop(){ try{ rec.stop(); }catch(_){} }
-
-  micBtn.addEventListener('click', ()=>{
-    if(active){ stop(); return; }
-    start();
-  });
-
-  rec.onstart = ()=>{
-    active = true;
-    micBtn.setAttribute('aria-pressed','true');
-    micBtn.classList.add('rec');
-    micBtn.title = 'Zuhören … erneut klicken zum Stoppen';
-  };
-  rec.onend = ()=>{
+  function cleanupUI(message){
     active = false;
     micBtn.setAttribute('aria-pressed','false');
     micBtn.classList.remove('rec');
-    micBtn.title = 'Sprachsuche starten';
-  };
-  rec.onerror = (ev)=>{
-    if(ev && ev.error && ev.error !== 'aborted'){
-      alert('Sprachsuche Fehler: ' + ev.error);
+    micBtn.title = message || 'Sprachsuche starten';
+  }
+
+  function bindRecognizer(instance){
+    instance.interimResults = false;
+    instance.maxAlternatives = 1;
+    instance.continuous = false;
+
+    instance.onstart = ()=>{
+      active = true;
+      micBtn.setAttribute('aria-pressed','true');
+      micBtn.classList.add('rec');
+      micBtn.title = 'Zuhören … erneut klicken zum Stoppen';
+    };
+
+    instance.onend = ()=>{
+      cleanupUI();
+      rec = null;
+    };
+
+    instance.onerror = (ev)=>{
+      if(!ev) return;
+      if(ev.error === 'not-allowed' || ev.error === 'service-not-allowed'){
+        cleanupUI('Mikrofonzugriff verweigert.');
+        micBtn.disabled = true;
+        micBtn.title = 'Zugriff auf das Mikrofon wurde blockiert.';
+        return;
+      }
+      if(ev.error === 'no-speech'){
+        cleanupUI('Keine Sprache erkannt – erneut versuchen.');
+        return;
+      }
+      if(ev.error !== 'aborted'){
+        cleanupUI();
+        alert('Sprachsuche Fehler: ' + ev.error);
+      }
+    };
+
+    instance.onresult = (ev)=>{
+      const idx = ev.resultIndex ?? 0;
+      const list = ev.results && ev.results[idx] ? ev.results[idx] : (ev.results && ev.results[0]);
+      const alt = list && list[0];
+      const text = alt ? String(alt.transcript || '').trim() : '';
+      if(!text) return;
+      const q = $('#q');
+      if(!q) return;
+      q.value = text;
+      q.focus();
+      q.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+  }
+
+  function buildRecognizer(){
+    try{ if(rec){ rec.onstart = rec.onend = rec.onresult = rec.onerror = null; rec.stop(); } }
+    catch(_){/* ignore */}
+    const instance = new SR();
+    instance.lang = navigator.language && /^de-CH/i.test(navigator.language) ? 'de-CH' : 'de-DE';
+    bindRecognizer(instance);
+    rec = instance;
+    return instance;
+  }
+
+  function start(){
+    const instance = buildRecognizer();
+    try{
+      instance.start();
+    }catch(err){
+      cleanupUI();
+      rec = null;
+      if(err && err.message){
+        console.warn('SpeechRecognition start() fehlgeschlagen', err);
+      }
     }
-  };
-  rec.onresult = (ev)=>{
-    const res = ev.results && ev.results[0] && ev.results[0][0];
-    const text = res ? String(res.transcript||'').trim() : '';
-    if(!text) return;
-    const q = $('#q');
-    q.value = text;
-    doSearch(text);
-  };
+  }
+
+  function stop(){
+    if(!rec) return;
+    try{ rec.stop(); }
+    catch(_){ cleanupUI(); rec = null; }
+  }
+
+  micBtn.addEventListener('click', ()=>{
+    if(active){
+      stop();
+      return;
+    }
+    start();
+  });
 }
 
 /* ===== Import/Export mit Dubletten-Schutz und String-Listen-Unterstützung ===== */
