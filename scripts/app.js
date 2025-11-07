@@ -53,6 +53,10 @@ const rulerEl = $('#ruler');
   $('#file').addEventListener('change', onImport);
   $('#btn-export').addEventListener('click', onExport);
 
+  // Benutzerdaten leeren
+  const clearBtn = document.getElementById('btn-clear-user');
+  if(clearBtn){ clearBtn.addEventListener('click', clearUserData); }
+
   // Voices
   setupVoices();
 
@@ -292,7 +296,7 @@ function remember(entry){
   }
 }
 
-/* Import/Export */
+/* ===== Import/Export mit Dubletten-Schutz und String-Listen-Unterstützung ===== */
 async function onImport(ev){
   const file = ev.target.files[0];
   if(!file) return;
@@ -301,26 +305,56 @@ async function onImport(ev){
   if(/\.json$/i.test(file.name)){
     try{
       const obj = JSON.parse(text);
-      entries = obj.entries || obj || [];
+      if(Array.isArray(obj)){ // z. B. 5000er Wortliste: ["Abend", ...]
+        entries = obj.map(s => ({ wort: String(s) }));
+      }else{
+        entries = obj.entries || obj.items || [];
+      }
     }catch(e){ alert('JSON fehlerhaft.'); return; }
   }else{ // CSV
     entries = parseCSV(text);
   }
   if(!Array.isArray(entries)){ alert('Keine Liste gefunden.'); return; }
+
+  // Normalisieren auf Schema
   const normed = entries.map(e => ({
     wort: (e.wort||e.word||'').replace(/ß/g,'ss').trim(),
     silben: e.silben ? String(e.silben).split(/[-·\s]/).filter(Boolean) : [],
     erklaerung: (e.erklaerung||e.definition||'').trim(),
-    beispiele: e.beispiele ? String(e.beispiele).split(/\s*[|]\s*/).filter(Boolean) : (e.beispiel ? [String(e.beispiel)] : []),
-    tags: e.tags ? String(e.tags).split(/\s*[,;]\s*/).filter(Boolean) : []
+    beispiele: e.beispiele
+      ? (Array.isArray(e.beispiele) ? e.beispiele : String(e.beispiele).split(/\s*[|]\s*/).filter(Boolean))
+      : (e.beispiel ? [String(e.beispiel)] : []),
+    tags: e.tags
+      ? (Array.isArray(e.tags) ? e.tags : String(e.tags).split(/\s*[,;]\s*/).filter(Boolean))
+      : []
   })).filter(x => x.wort);
 
-  state.userData = (state.userData||[]).concat(normed);
+  // Merge mit Dubletten-Schutz (Schlüssel = normalisiertes Lemma)
+  const m = mergeUserData(state.userData||[], normed);
+  state.userData = m.out;
   localStorage.setItem('lw_user_entries', JSON.stringify(state.userData));
+
   $('#q').value = '';
   render([]);
-  alert(`${normed.length} Einträge importiert (nur lokal).`);
+  alert(`${m.added} Einträge neu, ${m.skipped} übersprungen (bereits vorhanden).`);
   ev.target.value = '';
+}
+
+function mergeUserData(existing, incoming){
+  const normKey = e => norm(String((e.wort||'').replace(/ß/g,'ss')).trim());
+  const seen = new Set((existing||[]).map(normKey));
+  let added = 0, skipped = 0;
+  const out = (existing||[]).slice();
+  for(const e of (incoming||[])){
+    const w = String(e.wort||'').replace(/ß/g,'ss').trim();
+    const key = norm(w);
+    if(!w){ skipped++; continue; }
+    if(seen.has(key)){ skipped++; continue; }
+    out.push({...e, wort: w});
+    seen.add(key);
+    added++;
+  }
+  return {out, added, skipped};
 }
 
 function onExport(){
@@ -392,6 +426,7 @@ function addLearn(word){
   }
 }
 
+/* Aktionen unten */
 document.addEventListener('click', (e)=>{
   if(e.target && e.target.id==='learn-export-csv'){
     const rows = ['wort'];
@@ -407,3 +442,12 @@ document.addEventListener('click', (e)=>{
     if(confirm('Liste wirklich leeren?')){ state.learnWords = []; saveLearn(); }
   }
 });
+
+/* Benutzerdaten leeren (nur eigene Importe) */
+function clearUserData(){
+  if(!confirm('Benutzerdaten (eigene Importe) wirklich löschen? Lernwörter bleiben erhalten.')) return;
+  state.userData = [];
+  localStorage.removeItem('lw_user_entries');
+  render([]);
+  alert('Benutzerdaten gelöscht.');
+}
