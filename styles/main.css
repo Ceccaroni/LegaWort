@@ -183,6 +183,18 @@ h1{
    .btn.mic .icon{ width:24px; height:24px; display:block; }
 .btn.mic use{ fill: currentColor; stroke: currentColor; }
 }
+/* Mic-Icon im Button */
+.btn.mic .icon{
+  width:24px;
+  height:24px;
+  display:block;
+}
+
+.btn.mic .icon use{
+  fill: currentColor;
+  stroke: currentColor;
+}
+
 /* Toggles/Slider-Grids */
 .toggles, .sliders, .io{
   display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center;
