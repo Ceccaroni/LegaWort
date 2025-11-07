@@ -78,6 +78,14 @@ const rulerEl = $('#ruler');
   });
   $('#toggle-contrast').addEventListener('change', (e)=>{ state.contrast = e.target.checked; document.body.classList.toggle('contrast', state.contrast); saveSettings(); });
 
+  let lastPointerY = null;
+  const applyRulerPosition = (y)=>{
+    if(typeof y !== 'number' || !rulerEl) return;
+    const h = rulerEl.getBoundingClientRect().height || 36;
+    const clamped = Math.max(0, Math.min(window.innerHeight - h, y - h/2));
+    rulerEl.style.top = clamped + 'px';
+  };
+
   $('#toggle-ruler').addEventListener('change', (e)=>{
     state.ruler = e.target.checked;
     rulerEl.hidden = !state.ruler;
@@ -91,9 +99,10 @@ const rulerEl = $('#ruler');
       rulerEl.style.zIndex = '9999';
 
       // Einmalige sinnvolle Startposition setzen
-      const h = rulerEl.getBoundingClientRect().height || 36;
-      const y = Math.max(0, (window.innerHeight * 0.40) - h / 2);
-      rulerEl.style.top = y + 'px';
+      requestAnimationFrame(()=>{
+        const y = typeof lastPointerY === 'number' ? lastPointerY : window.innerHeight * 0.40;
+        applyRulerPosition(y);
+      });
     }
     saveSettings();
   });
@@ -116,19 +125,32 @@ const rulerEl = $('#ruler');
   // TTS
   setupVoices();
 
-  // Leselineal: robuste Pointer-/Touch-Listener am Window
+  // Leselineal: robuste Pointer-/Touch-Listener auf Window + Document
+  const resolvePointerY = (e)=>{
+    if(typeof e?.clientY === 'number') return e.clientY;
+    if(e?.touches && e.touches[0]) return e.touches[0].clientY;
+    if(e?.changedTouches && e.changedTouches[0]) return e.changedTouches[0].clientY;
+    return null;
+  };
+
   function onPointerMove(e){
-    if(!state.ruler) return;
-    const h = rulerEl.getBoundingClientRect().height || 36;
-    const y0 = (typeof e.clientY === 'number')
-      ? e.clientY
-      : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
-    const y = Math.max(0, Math.min(window.innerHeight - h, y0 - h/2));
-    rulerEl.style.top = y + 'px';
+    const y0 = resolvePointerY(e);
+    if(typeof y0 === 'number'){
+      lastPointerY = y0;
+    }
+    if(!state.ruler || typeof lastPointerY !== 'number') return;
+    applyRulerPosition(lastPointerY);
   }
-  window.addEventListener('pointermove', onPointerMove, { passive: true });
-  window.addEventListener('mousemove',    onPointerMove, { passive: true });
-  window.addEventListener('touchmove',    onPointerMove, { passive: false });
+  const pointerOpts = { passive: true };
+  const touchOpts = { passive: false };
+  window.addEventListener('pointermove', onPointerMove, pointerOpts);
+  window.addEventListener('pointerdown', onPointerMove, pointerOpts);
+  window.addEventListener('mousemove',    onPointerMove, pointerOpts);
+  document.addEventListener('mousemove',  onPointerMove, pointerOpts);
+  window.addEventListener('touchmove',    onPointerMove, touchOpts);
+  window.addEventListener('touchstart',   onPointerMove, touchOpts);
+  document.addEventListener('touchmove',  onPointerMove, touchOpts);
+  document.addEventListener('touchstart', onPointerMove, touchOpts);
 })();
 
 function hydrateSettings(){
