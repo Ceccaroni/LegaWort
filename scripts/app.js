@@ -64,6 +64,50 @@ const rulerEl = $('#ruler');
   hydrateLearn();
 
   // UI
+  const settingsToggle = $('#btn-settings');
+  const settingsPanel = $('#settings-panel');
+  const settingsWrapper = settingsToggle ? settingsToggle.closest('.settings-wrapper') : null;
+
+  const setSettingsOpen = (open)=>{
+    if(!settingsPanel || !settingsToggle) return;
+    settingsPanel.hidden = !open;
+    settingsToggle.setAttribute('aria-expanded', String(open));
+    if(settingsWrapper){
+      settingsWrapper.classList.toggle('open', open);
+    }
+    if(open && document.activeElement === settingsToggle){
+      const focusTarget = settingsPanel.querySelector('input, button, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if(focusTarget){
+        focusTarget.focus({ preventScroll: true });
+      }
+    }
+  };
+
+  const closeSettings = ()=> setSettingsOpen(false);
+
+  if(settingsToggle && settingsPanel){
+    settingsToggle.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const expanded = settingsToggle.getAttribute('aria-expanded') === 'true';
+      setSettingsOpen(!expanded);
+    });
+
+    settingsPanel.addEventListener('click', (e)=> e.stopPropagation());
+
+    document.addEventListener('click', ()=>{
+      closeSettings();
+    });
+
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === 'Escape'){
+        if(settingsPanel && !settingsPanel.hidden){
+          closeSettings();
+          settingsToggle.focus();
+        }
+      }
+    });
+  }
+
   $('#q').addEventListener('input', onSearch);
   $('#toggle-syll').addEventListener('change', (e)=>{
     state.showSyll = e.target.checked;
