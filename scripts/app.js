@@ -2,8 +2,8 @@
    Keine externen Ressourcen, läuft auf GitHub Pages.
 */
 const state = {
-  data: [],
-  userData: [],
+  data: [],            // kleiner Basis-Datensatz (optional)
+  userData: [],        // lokale Importe
   voices: [],
   showSyll: true,
   dys: false,
@@ -11,7 +11,11 @@ const state = {
   ruler: false,
   ls: 3,
   lh: 18,
-  learnWords: []
+  learnWords: [],
+  // Grossdatensatz via Prefix-Chunks
+  chunkIndex: null,    // { prefixLen: 2, prefixes: { "aa": "aa.json", ... } }
+  chunkCache: new Map(), // prefix -> Array<{wort,...}>
+  chunkPrefixLen: 2
 };
 
 const $ = sel => document.querySelector(sel);
@@ -19,26 +23,42 @@ const resultsEl = $('#results');
 const rulerEl = $('#ruler');
 
 (async function init(){
-  // Load base data
+  // Basisdaten (klein)
   try{
     const res = await fetch('data/words.json');
-    const base = await res.json();
-    state.data = base.entries || [];
+    if(res.ok){
+      const base = await res.json();
+      state.data = base.entries || [];
+    }
   }catch(e){
     console.warn('Kein Basis-Datensatz geladen', e);
   }
-  // Load user data
+
+  // Chunk-Index (für grosse Listen)
+  try{
+    const ci = await fetch('data/_chunks/index.json');
+    if(ci.ok){
+      state.chunkIndex = await ci.json(); // erwartet {prefixLen:2,prefixes:{aa:"aa.json",...}}
+      if(typeof state.chunkIndex.prefixLen === 'number'){
+        state.chunkPrefixLen = state.chunkIndex.prefixLen;
+      }
+    }
+  }catch(e){
+    // kein Chunk-Betrieb aktiv – OK
+  }
+
+  // Userdaten laden
   const u = localStorage.getItem('lw_user_entries');
   if(u){ try{ state.userData = JSON.parse(u); }catch(e){} }
 
-  // Settings
+  // Settings anwenden
   hydrateSettings();
 
-  // Render initial: leer – erst nach Suche
+  // Initial: leer
   render([]);
   hydrateLearn();
 
-  // Wire UI
+  // UI-Events
   $('#q').addEventListener('input', onSearch);
   $('#toggle-syll').addEventListener('change', (e)=>{ state.showSyll = e.target.checked; render(); saveSettings(); });
   $('#toggle-dys').addEventListener('change', (e)=>{ state.dys = e.target.checked; document.body.classList.toggle('dys', state.dys); saveSettings(); });
@@ -53,14 +73,14 @@ const rulerEl = $('#ruler');
   $('#file').addEventListener('change', onImport);
   $('#btn-export').addEventListener('click', onExport);
 
-  // Benutzerdaten leeren (direktes Binding)
+  // Benutzerdaten leeren
   const clearBtn = document.getElementById('btn-clear-user');
   if(clearBtn){ clearBtn.addEventListener('click', clearUserData); }
 
-  // Voices
+  // TTS
   setupVoices();
 
-  // Ruler follow
+  // Leselineal
   document.addEventListener('mousemove', (e)=>{
     if(!state.ruler) return;
     rulerEl.style.top = Math.max(0, e.clientY - rulerEl.offsetHeight/2) + 'px';
@@ -92,7 +112,7 @@ function saveSettings(){
   localStorage.setItem('lw_settings', JSON.stringify({showSyll,dys,contrast,ruler,ls,lh}));
 }
 
-/* Suche (debounced) */
+/* Suche (debounced) – erst ab 2 Zeichen */
 let _searchTimer = null;
 function onSearch(e){
   const val = e.target.value;
@@ -100,14 +120,53 @@ function onSearch(e){
   _searchTimer = setTimeout(()=>doSearch(val), 120);
 }
 
-function doSearch(input){
-  const q = norm(input);
-  const all = state.data.concat(state.userData);
-  if(q.length === 0){ render([]); return; }
+async function ensureChunk(prefix){
+  if(!state.chunkIndex) return [];
+  const p = prefix.toLowerCase();
+  if(state.chunkCache.has(p)) return state.chunkCache.get(p);
+  const file = state.chunkIndex.prefixes?.[p];
+  if(!file) { state.chunkCache.set(p, []); return []; }
+  try{
+    const res = await fetch(`data/_chunks/${file}`);
+    if(!res.ok) throw new Error(res.status);
+    const obj = await res.json();
+    // akzeptiert Array von Strings oder {entries:[...]}
+    const list = Array.isArray(obj) ? obj.map(s=>({wort:String(s)})) : (obj.entries || obj || []);
+    const mapped = list.map(e => ({
+      wort: (e.wort||e.word||String(e)).replace(/ß/g,'ss').trim(),
+      silben: e.silben ? String(e.silben).split(/[-·\s]/).filter(Boolean) : [],
+      erklaerung: (e.erklaerung||e.definition||'').trim(),
+      beispiele: e.beispiele ? (Array.isArray(e.beispiele)?e.beispiele:String(e.beispiele).split(/\s*[|]\s*/).filter(Boolean)) : [],
+      tags: e.tags ? (Array.isArray(e.tags)?e.tags:String(e.tags).split(/\s*[,;]\s*/).filter(Boolean)) : []
+    })).filter(x=>x.wort);
+    state.chunkCache.set(p, mapped);
+    return mapped;
+  }catch(err){
+    console.warn('Chunk-Load fehlgeschlagen', p, err);
+    state.chunkCache.set(p, []);
+    return [];
+  }
+}
 
-  const direct = all.filter(it => norm(it.wort).includes(q));
-  // Fuzzy suggestions
-  const fuzzy = all
+async function doSearch(input){
+  const q = norm(input);
+  if(q.length < 2){ render([]); return; }
+
+  // Basis + User
+  let pool = state.data.concat(state.userData);
+
+  // Grosse Daten: passenden Chunk nachladen
+  if(state.chunkIndex){
+    const pref = q.slice(0, state.chunkPrefixLen);
+    const chunk = await ensureChunk(pref);
+    pool = pool.concat(chunk);
+  }
+
+  // Direkte Treffer
+  const direct = pool.filter(it => norm(it.wort).includes(q));
+
+  // Fuzzy (beschränkt)
+  const fuzzy = pool
     .map(it => ({ it, d: distance(q, norm(it.wort)) }))
     .sort((a,b)=>a.d-b.d)
     .filter(x => x.d > 0 && x.d <= Math.max(2, Math.floor(q.length/3)))
@@ -117,9 +176,7 @@ function doSearch(input){
   const merged = [...new Set([...direct, ...fuzzy])].slice(0, 24);
   render(merged, q);
 
-  // Top-Treffer zur Lernliste
-  const top = (direct[0] || merged[0]);
-  if(top) addLearn(top.wort);
+  // Kein Auto-Eintrag mehr in Lernliste.
 }
 
 /* Normalisierung: Kleinbuchstaben, ss statt ß, Diakritika entfernen */
@@ -159,7 +216,7 @@ function render(list, query=''){
   const items = (list || []);
   resultsEl.innerHTML = '';
   if(items.length === 0){
-    resultsEl.innerHTML = `<div class="card"><h2>Suche starten</h2><p class="definition">Tippe ein Wort. Es werden nur Treffer angezeigt, nicht das ganze Wörterbuch.</p></div>`;
+    resultsEl.innerHTML = `<div class="card"><h2>Suche starten</h2><p class="definition">Gib mindestens zwei Buchstaben ein. Es werden nur Treffer angezeigt, nicht das ganze Wörterbuch.</p></div>`;
     return;
   }
   const frag = document.createDocumentFragment();
@@ -190,7 +247,6 @@ function renderCard(entry, query){
     <div class="actions">
       <button aria-label="Wort vorlesen" data-act="speak-word">Wort vorlesen</button>
       <button aria-label="Erklärung vorlesen" data-act="speak-def">Erklärung vorlesen</button>
-      <button aria-label="Merken" data-act="remember">Merken</button>
       <button aria-label="Zur Lernliste" data-act="learn">Zur Lernliste</button>
     </div>
   `;
@@ -200,7 +256,6 @@ function renderCard(entry, query){
       const act = ev.currentTarget.dataset.act;
       if(act==='speak-word') speak(entry.wort);
       else if(act==='speak-def') speak(entry.erklaerung||entry.wort);
-      else if(act==='remember') remember(entry);
       else if(act==='learn') addLearn(entry.wort);
     });
   });
@@ -283,17 +338,13 @@ function speak(text){
   speechSynthesis.speak(u);
 }
 
-/* Merkliste – einfach via localStorage */
-function remember(entry){
-  let list = JSON.parse(localStorage.getItem('lw_favs')||'[]');
-  if(!list.find(x=>x.wort===entry.wort)){
-    list.push({wort:entry.wort, ts:Date.now()});
-    localStorage.setItem('lw_favs', JSON.stringify(list));
-    alert('Gespeichert.');
-    addLearn(entry.wort);
-  }else{
-    alert('Schon gespeichert.');
-  }
+/* Benutzerdaten leeren (nur eigene Importe) */
+function clearUserData(){
+  if(!confirm('Benutzerdaten (eigene Importe) wirklich löschen? Lernwörter bleiben erhalten.')) return;
+  state.userData = [];
+  localStorage.removeItem('lw_user_entries');
+  render([]);
+  alert('Benutzerdaten gelöscht.');
 }
 
 /* ===== Import/Export mit Dubletten-Schutz und String-Listen-Unterstützung ===== */
@@ -389,7 +440,7 @@ function splitCSVLine(line, delim){
   return out.map(s=>s.trim());
 }
 
-/* Lernwörter: speichern/anzeigen/exportieren */
+/* Lernwörter */
 function hydrateLearn(){
   const raw = localStorage.getItem('lw_learn');
   if(raw){ try{ state.learnWords = JSON.parse(raw) || []; }catch{} }
@@ -424,15 +475,12 @@ function addLearn(word){
   }
 }
 
-/* Delegation: greift auch, wenn ein früher Fehler direktes Binding blockiert */
+/* Delegation für Misc-Actions */
 document.addEventListener('click', (e)=>{
   const t = e.target;
   if(!t) return;
 
-  if(t.id==='btn-clear-user'){
-    clearUserData();
-    return;
-  }
+  if(t.id==='btn-clear-user'){ clearUserData(); return; }
 
   if(t.id==='learn-export-csv'){
     const rows = ['wort'];
@@ -448,12 +496,3 @@ document.addEventListener('click', (e)=>{
     if(confirm('Liste wirklich leeren?')){ state.learnWords = []; saveLearn(); }
   }
 });
-
-/* Benutzerdaten leeren (nur eigene Importe) */
-function clearUserData(){
-  if(!confirm('Benutzerdaten (eigene Importe) wirklich löschen? Lernwörter bleiben erhalten.')) return;
-  state.userData = [];
-  localStorage.removeItem('lw_user_entries');
-  render([]);
-  alert('Benutzerdaten gelöscht.');
-}
