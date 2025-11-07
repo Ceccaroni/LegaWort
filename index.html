@@ -12,7 +12,6 @@
   <h1>Legasthenie-Wörterbuch <span class="badge">CH-DE</span></h1>
   <div class="controls" role="region" aria-label="Einstellungen">
     <label>
-      <span class="lbl">Suche</span>
       <div class="search-row">
         <input id="q" class="search" type="search" placeholder="Wort suchen…" autocomplete="off" />
         <button id="btn-mic" class="btn mic" type="button" aria-label="Sprachsuche starten/stoppen">🎙</button>
@@ -47,9 +46,9 @@
       </label>
     </div>
     <div class="io">
-      <button id="btn-import" type="button">Import</button>
-      <button id="btn-export" type="button">Export</button>
-      <button id="btn-clear-user" type="button" title="Benutzerdaten löschen">Benutzerdaten leeren</button>
+      <button id="btn-import" type="button" class="btn btn-primary">Import</button>
+      <button id="btn-export" type="button" class="btn btn-secondary">Export</button>
+      <button id="btn-clear-user" type="button" class="btn btn-danger" title="Benutzerdaten löschen">Benutzerdaten leeren</button>
       <input id="file" type="file" accept=".json,.csv,text/csv" hidden />
     </div>
   </div>
@@ -61,9 +60,9 @@
   <div class="learn-head">
     <h2>Lernwörter <span id="learn-count" class="badge">0</span></h2>
     <div class="learn-actions">
-      <button id="learn-export-csv" type="button">Export CSV</button>
-      <button id="learn-export-json" type="button">Export JSON</button>
-      <button id="learn-clear" type="button" title="Liste leeren">Leeren</button>
+      <button id="learn-export-csv" type="button" class="btn btn-sm btn-secondary">Export CSV</button>
+      <button id="learn-export-json" type="button" class="btn btn-sm btn-secondary">Export JSON</button>
+      <button id="learn-clear" type="button" class="btn btn-sm btn-danger" title="Liste leeren">Leeren</button>
     </div>
   </div>
   <ol id="learn-list" class="learn-list"></ol>
