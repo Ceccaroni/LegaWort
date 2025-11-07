@@ -45,10 +45,10 @@
         <input id="lh" type="range" min="12" max="24" step="1" value="18" />
       </label>
     </div>
-    <div class="io">
-      <button id="btn-import" type="button" class="btn btn-primary">Import</button>
-      <button id="btn-export" type="button" class="btn btn-secondary">Export</button>
-      <button id="btn-clear-user" type="button" class="btn btn-danger" title="Benutzerdaten löschen">Benutzerdaten leeren</button>
+    <!-- Buttons rechts ausrichten, Export oben entfernt -->
+    <div class="io" style="justify-content:flex-end">
+      <button id="btn-import" type="button" class="btn btn-secondary">Import</button>
+      <button id="btn-clear-user" type="button" class="btn btn-warning" title="Benutzerdaten löschen">Benutzerdaten leeren</button>
       <input id="file" type="file" accept=".json,.csv,text/csv" hidden />
     </div>
   </div>
@@ -62,7 +62,7 @@
     <div class="learn-actions">
       <button id="learn-export-csv" type="button" class="btn btn-sm btn-secondary">Export CSV</button>
       <button id="learn-export-json" type="button" class="btn btn-sm btn-secondary">Export JSON</button>
-      <button id="learn-clear" type="button" class="btn btn-sm btn-danger" title="Liste leeren">Leeren</button>
+      <button id="learn-clear" type="button" class="btn btn-sm btn-warning" title="Liste leeren">Leeren</button>
     </div>
   </div>
   <ol id="learn-list" class="learn-list"></ol>
