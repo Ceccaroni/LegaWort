@@ -44,9 +44,9 @@
       </label>
     </div>
     <div class="io">
-      <button id="btn-import">Import</button>
-      <button id="btn-export">Export</button>
-      <button id="btn-clear-user" title="Benutzerdaten löschen">Benutzerdaten leeren</button>
+      <button id="btn-import" type="button">Import</button>
+      <button id="btn-export" type="button">Export</button>
+      <button id="btn-clear-user" type="button" title="Benutzerdaten löschen">Benutzerdaten leeren</button>
       <input id="file" type="file" accept=".json,.csv,text/csv" hidden />
     </div>
   </div>
@@ -58,9 +58,9 @@
   <div class="learn-head">
     <h2>Lernwörter <span id="learn-count" class="badge">0</span></h2>
     <div class="learn-actions">
-      <button id="learn-export-csv">Export CSV</button>
-      <button id="learn-export-json">Export JSON</button>
-      <button id="learn-clear" title="Liste leeren">Leeren</button>
+      <button id="learn-export-csv" type="button">Export CSV</button>
+      <button id="learn-export-json" type="button">Export JSON</button>
+      <button id="learn-clear" type="button" title="Liste leeren">Leeren</button>
     </div>
   </div>
   <ol id="learn-list" class="learn-list"></ol>
@@ -73,6 +73,7 @@
   <p><a href="README.md">Hinweise</a> · <a href="LICENSE">Lizenz</a></p>
 </footer>
 
-<script src="scripts/app.js"></script>
+<!-- Cache-Bust, damit die neue app.js sicher geladen wird -->
+<script src="scripts/app.js?v=102"></script>
 </body>
 </html>
