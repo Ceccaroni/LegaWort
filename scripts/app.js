@@ -77,6 +77,9 @@ const rulerEl = $('#ruler');
   const clearBtn = document.getElementById('btn-clear-user');
   if(clearBtn){ clearBtn.addEventListener('click', clearUserData); }
 
+  // Sprachsuche (nur UI anbinden; Logik unabhängig von Suche)
+  setupSpeechSearch();
+
   // TTS
   setupVoices();
 
@@ -128,7 +131,7 @@ function confusableStarts(q){
   if(!q) return null;
   const groups = {
     a: '[aäàáâeio]',
-    e: '[eèéêi y]',
+    e: '[eèéêiy]',
     i: '[iíìîye]',
     o: '[oóòôu]',
     u: '[uúùûo]',
@@ -395,6 +398,67 @@ function clearUserData(){
   localStorage.removeItem('lw_user_entries');
   render([]);
   alert('Benutzerdaten gelöscht.');
+}
+
+/* ===== Sprachsuche (Web Speech API) ===== */
+function setupSpeechSearch(){
+  const micBtn = document.getElementById('btn-mic');
+  if(!micBtn) return;
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){
+    micBtn.disabled = true;
+    micBtn.title = 'Sprachsuche wird von diesem Gerät/Browser nicht unterstützt.';
+    return;
+  }
+
+  const rec = new SR();
+  rec.lang = 'de-CH';
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+
+  let active = false;
+
+  function start(){
+    try{
+      rec.lang = navigator.language && /^de-CH/i.test(navigator.language) ? 'de-CH' : 'de-DE';
+      rec.start();
+    }catch(_){}
+  }
+  function stop(){ try{ rec.stop(); }catch(_){} }
+
+  micBtn.addEventListener('click', ()=>{
+    if(active){ stop(); return; }
+    start();
+  });
+
+  rec.onstart = ()=>{
+    active = true;
+    micBtn.setAttribute('aria-pressed','true');
+    micBtn.classList.add('rec');
+    micBtn.title = 'Zuhören … erneut klicken zum Stoppen';
+  };
+  rec.onend = ()=>{
+    active = false;
+    micBtn.setAttribute('aria-pressed','false');
+    micBtn.classList.remove('rec');
+    micBtn.title = 'Sprachsuche starten';
+  };
+  rec.onerror = (ev)=>{
+    // typische Fehler: not-allowed, no-speech, aborted
+    if(ev && ev.error && ev.error !== 'aborted'){
+      alert('Sprachsuche Fehler: ' + ev.error);
+    }
+  };
+  rec.onresult = (ev)=>{
+    const res = ev.results && ev.results[0] && ev.results[0][0];
+    const text = res ? String(res.transcript||'').trim() : '';
+    if(!text) return;
+    const q = $('#q');
+    q.value = text;
+    // sofort suchen (debounce umgehen)
+    doSearch(text);
+  };
 }
 
 /* ===== Import/Export mit Dubletten-Schutz und String-Listen-Unterstützung ===== */
