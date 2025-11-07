@@ -176,8 +176,6 @@ h1{
   display: inline-block;
   color: var(--primary);
   background-color: currentColor;
-  -webkit-mask: url("assets/icons/microphone_web_24.svg") no-repeat center / contain;
-  mask: url("assets/icons/microphone_web_24.svg") no-repeat center / contain;
 }
 
 .btn.mic.rec .icon {
