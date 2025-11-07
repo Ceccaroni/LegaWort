@@ -12,9 +12,9 @@ const state = {
   ls: 3,
   lh: 18,
   learnWords: [],
-  // Grossdatensatz via Prefix-Chunks
-  chunkIndex: null,    // { prefixLen: 2, prefixes: { "aa": "aa.json", ... } }
-  chunkCache: new Map(), // prefix -> Array<{wort,...}>
+  // Grossdatensatz via Prefix-Chunks (optional)
+  chunkIndex: null,        // { prefixLen: 2, prefixes: { "aa": "aa.json", ... } }
+  chunkCache: new Map(),   // prefix -> Array<{wort,...}>
   chunkPrefixLen: 2
 };
 
@@ -23,7 +23,7 @@ const resultsEl = $('#results');
 const rulerEl = $('#ruler');
 
 (async function init(){
-  // Basisdaten (klein)
+  // Basisdaten (optional)
   try{
     const res = await fetch('data/words.json');
     if(res.ok){
@@ -34,11 +34,11 @@ const rulerEl = $('#ruler');
     console.warn('Kein Basis-Datensatz geladen', e);
   }
 
-  // Chunk-Index (für grosse Listen)
+  // Chunk-Index (für grosse Listen, optional)
   try{
     const ci = await fetch('data/_chunks/index.json');
     if(ci.ok){
-      state.chunkIndex = await ci.json(); // erwartet {prefixLen:2,prefixes:{aa:"aa.json",...}}
+      state.chunkIndex = await ci.json(); // {prefixLen, prefixes:{..}}
       if(typeof state.chunkIndex.prefixLen === 'number'){
         state.chunkPrefixLen = state.chunkIndex.prefixLen;
       }
@@ -51,14 +51,14 @@ const rulerEl = $('#ruler');
   const u = localStorage.getItem('lw_user_entries');
   if(u){ try{ state.userData = JSON.parse(u); }catch(e){} }
 
-  // Settings anwenden
+  // Settings
   hydrateSettings();
 
-  // Initial: leer
+  // Initial: leer – erst nach Suche
   render([]);
   hydrateLearn();
 
-  // UI-Events
+  // UI
   $('#q').addEventListener('input', onSearch);
   $('#toggle-syll').addEventListener('change', (e)=>{ state.showSyll = e.target.checked; render(); saveSettings(); });
   $('#toggle-dys').addEventListener('change', (e)=>{ state.dys = e.target.checked; document.body.classList.toggle('dys', state.dys); saveSettings(); });
@@ -120,6 +120,46 @@ function onSearch(e){
   _searchTimer = setTimeout(()=>doSearch(val), 120);
 }
 
+/* Zusatz-Heuristik für sehr kurze Eingaben (2–3 Zeichen)
+   – vergleicht gegen Wortanfang
+   – berücksichtigt Verwechslungsgruppen (b/d/p/q, g/k, ei/ie, Vokale)
+*/
+function confusableStarts(q){
+  if(!q) return null;
+  const groups = {
+    a: '[aäàáâeio]',
+    e: '[eèéêi y]',
+    i: '[iíìîye]',
+    o: '[oóòôu]',
+    u: '[uúùûo]',
+    b: '[bdpq]',
+    d: '[bdpq]',
+    p: '[bdpq]',
+    q: '[bdpq]',
+    g: '[gk]',
+    k: '[gk]',
+    s: '[sz]',
+    z: '[zs]'
+  };
+  // ei/ie-Spezialfall
+  const nq = q.toLowerCase().replace(/ß/g,'ss');
+  if(nq === 'ei' || nq === 'ie'){
+    return /^(ei|ie)/i;
+  }
+  // Zeichenweise in Klassen umwandeln
+  let pattern = '^';
+  for(const ch of nq){
+    const cls = groups[ch] || ch.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    pattern += cls;
+  }
+  return new RegExp(pattern, 'i');
+}
+
+function prefixDistance(a, word){
+  const b = norm(word).slice(0, Math.max(3, a.length));
+  return distance(a, b);
+}
+
 async function ensureChunk(prefix){
   if(!state.chunkIndex) return [];
   const p = prefix.toLowerCase();
@@ -130,7 +170,6 @@ async function ensureChunk(prefix){
     const res = await fetch(`data/_chunks/${file}`);
     if(!res.ok) throw new Error(res.status);
     const obj = await res.json();
-    // akzeptiert Array von Strings oder {entries:[...]}
     const list = Array.isArray(obj) ? obj.map(s=>({wort:String(s)})) : (obj.entries || obj || []);
     const mapped = list.map(e => ({
       wort: (e.wort||e.word||String(e)).replace(/ß/g,'ss').trim(),
@@ -165,7 +204,19 @@ async function doSearch(input){
   // Direkte Treffer
   const direct = pool.filter(it => norm(it.wort).includes(q));
 
-  // Fuzzy (beschränkt)
+  // Kurz-Query-Heuristik (2–3 Zeichen): Wortanfang + Verwechslungsgruppen
+  let shortHits = [];
+  if(q.length <= 3){
+    const rx = confusableStarts(q);
+    if(rx){
+      shortHits = pool.filter(it => rx.test(norm(it.wort)));
+    }
+    // Präfix-Editdistanz gegen Wortanfang
+    const nearPrefix = pool.filter(it => prefixDistance(q, it.wort) <= 2);
+    shortHits = shortHits.concat(nearPrefix);
+  }
+
+  // Fuzzy (allgemein, aber gedrosselt)
   const fuzzy = pool
     .map(it => ({ it, d: distance(q, norm(it.wort)) }))
     .sort((a,b)=>a.d-b.d)
@@ -173,10 +224,9 @@ async function doSearch(input){
     .slice(0, 24)
     .map(x => x.it);
 
-  const merged = [...new Set([...direct, ...fuzzy])].slice(0, 24);
+  // Mischen, Dedup, Limit
+  const merged = [...new Set([...direct, ...shortHits, ...fuzzy])].slice(0, 24);
   render(merged, q);
-
-  // Kein Auto-Eintrag mehr in Lernliste.
 }
 
 /* Normalisierung: Kleinbuchstaben, ss statt ß, Diakritika entfernen */
@@ -475,7 +525,7 @@ function addLearn(word){
   }
 }
 
-/* Delegation für Misc-Actions */
+/* Delegation für Export/Leeren */
 document.addEventListener('click', (e)=>{
   const t = e.target;
   if(!t) return;
