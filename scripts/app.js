@@ -63,7 +63,13 @@ const rulerEl = $('#ruler');
 
   // UI
   $('#q').addEventListener('input', onSearch);
-  $('#toggle-syll').addEventListener('change', (e)=>{ state.showSyll = e.target.checked; render(); saveSettings(); });
+  $('#toggle-dys').addEventListener('change', (e)=>{
+  state.dys = e.target.checked;
+  document.body.classList.toggle('dys', state.dys);
+  doSearch($('#q').value);   // statt render();
+  saveSettings();
+});
+
   $('#toggle-dys').addEventListener('change', (e)=>{ state.dys = e.target.checked; document.body.classList.toggle('dys', state.dys); saveSettings(); });
   $('#toggle-contrast').addEventListener('change', (e)=>{ state.contrast = e.target.checked; document.body.classList.toggle('contrast', state.contrast); saveSettings(); });
 
