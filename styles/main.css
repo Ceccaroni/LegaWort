@@ -44,6 +44,18 @@
 
 *{ box-sizing:border-box }
 
+.visually-hidden{
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0 0 0 0);
+  white-space:nowrap;
+  border:0;
+}
+
 html,body{ height:100% }
 
 body{
@@ -97,7 +109,10 @@ h1{
 .controls{ display:grid; gap: var(--gap); grid-template-columns: 1fr; }
 
 .search-row{
-  display:flex; gap:8px; align-items:center;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  width:100%;
 }
 
 .controls .search{
@@ -143,11 +158,31 @@ h1{
 
 /* Mikrofon-Button bleibt sekundär-stilisiert */
 .btn.mic{
+  display:flex;
+  align-items:center;
+  justify-content:center;
   border-color: var(--btn-border-ink);
   background:#fff;
   color: var(--primary);
 }
 .btn.mic:hover{ background:#F2F8FF; }
+.btn.mic.rec{
+  background: var(--btn-border-ink);
+  color:#fff;
+}
+.btn.mic .icon {
+  width: 24px;
+  height: 24px;
+  display: inline-block;
+  color: var(--primary);
+  background-color: currentColor;
+  -webkit-mask: url("assets/icons/microphone_web_24.svg") no-repeat center / contain;
+  mask: url("assets/icons/microphone_web_24.svg") no-repeat center / contain;
+}
+
+.btn.mic.rec .icon {
+  color: var(--secondary);
+}
 
 /* Toggles/Slider-Grids */
 .toggles, .sliders, .io{
