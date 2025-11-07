@@ -63,16 +63,18 @@ const rulerEl = $('#ruler');
   $('#toggle-syll').addEventListener('change', (e)=>{ state.showSyll = e.target.checked; render(); saveSettings(); });
   $('#toggle-dys').addEventListener('change', (e)=>{ state.dys = e.target.checked; document.body.classList.toggle('dys', state.dys); saveSettings(); });
   $('#toggle-contrast').addEventListener('change', (e)=>{ state.contrast = e.target.checked; document.body.classList.toggle('contrast', state.contrast); saveSettings(); });
-$('#toggle-ruler').addEventListener('change', (e)=>{
-  state.ruler = e.target.checked;
-  rulerEl.hidden = !state.ruler;
 
-  if (state.ruler) {
-    // Einmalige sinnvolle Startposition setzen, bevor Maus bewegt wird
-    const h = rulerEl.getBoundingClientRect().height || 36;
-    const y = Math.max(0, (window.innerHeight * 0.40) - h / 2);
-    rulerEl.style.top = y + 'px';
-  } saveSettings(); });
+  $('#toggle-ruler').addEventListener('change', (e)=>{
+    state.ruler = e.target.checked;
+    rulerEl.hidden = !state.ruler;
+    if (state.ruler) {
+      // Einmalige sinnvolle Startposition setzen
+      const h = rulerEl.getBoundingClientRect().height || 36;
+      const y = Math.max(0, (window.innerHeight * 0.40) - h / 2);
+      rulerEl.style.top = y + 'px';
+    }
+    saveSettings();
+  });
 
   $('#ls').addEventListener('input', (e)=>{ state.ls = +e.target.value; document.documentElement.style.setProperty('--ls', (state.ls/100)+'em'); saveSettings(); });
   $('#lh').addEventListener('input', (e)=>{ state.lh = +e.target.value; document.documentElement.style.setProperty('--lh', (state.lh/10)); saveSettings(); });
@@ -86,17 +88,25 @@ $('#toggle-ruler').addEventListener('change', (e)=>{
   const clearBtn = document.getElementById('btn-clear-user');
   if(clearBtn){ clearBtn.addEventListener('click', clearUserData); }
 
-  // Sprachsuche (nur UI anbinden; Logik unabhängig von Suche)
+  // Sprachsuche
   setupSpeechSearch();
 
   // TTS
   setupVoices();
 
-  // Leselineal
-  document.addEventListener('mousemove', (e)=>{
+  // Leselineal: robuste Pointer-/Touch-Listener am Window
+  function onPointerMove(e){
     if(!state.ruler) return;
-    rulerEl.style.top = Math.max(0, e.clientY - rulerEl.offsetHeight/2) + 'px';
-  });
+    const h = rulerEl.getBoundingClientRect().height || 36;
+    const y0 = (typeof e.clientY === 'number')
+      ? e.clientY
+      : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+    const y = Math.max(0, Math.min(window.innerHeight - h, y0 - h/2));
+    rulerEl.style.top = y + 'px';
+  }
+  window.addEventListener('pointermove', onPointerMove, { passive: true });
+  window.addEventListener('mousemove',    onPointerMove, { passive: true });
+  window.addEventListener('touchmove',    onPointerMove, { passive: false });
 })();
 
 function hydrateSettings(){
@@ -107,10 +117,16 @@ function hydrateSettings(){
       Object.assign(state, o);
     }catch(e){}
   }
+
+  // Immer mit ausgeschaltetem Leselineal starten (Policy)
+  state.ruler = false;
+
   $('#toggle-syll').checked = state.showSyll;
   $('#toggle-dys').checked = state.dys;
   $('#toggle-contrast').checked = state.contrast;
-  $('#toggle-ruler').checked = state.ruler;
+  $('#toggle-ruler').checked = false;          // Checkbox sicher "off"
+  rulerEl.hidden = true;                       // Lineal verstecken
+
   document.body.classList.toggle('dys', state.dys);
   document.body.classList.toggle('contrast', state.contrast);
   document.documentElement.style.setProperty('--ls', (state.ls/100)+'em');
@@ -153,12 +169,10 @@ function confusableStarts(q){
     s: '[sz]',
     z: '[zs]'
   };
-  // ei/ie-Spezialfall
   const nq = q.toLowerCase().replace(/ß/g,'ss');
   if(nq === 'ei' || nq === 'ie'){
     return /^(ei|ie)/i;
   }
-  // Zeichenweise in Klassen umwandeln
   let pattern = '^';
   for(const ch of nq){
     const cls = groups[ch] || ch.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
@@ -223,7 +237,6 @@ async function doSearch(input){
     if(rx){
       shortHits = pool.filter(it => rx.test(norm(it.wort)));
     }
-    // Präfix-Editdistanz gegen Wortanfang
     const nearPrefix = pool.filter(it => prefixDistance(q, it.wort) <= 2);
     shortHits = shortHits.concat(nearPrefix);
   }
@@ -241,7 +254,7 @@ async function doSearch(input){
   render(merged, q);
 }
 
-/* Normalisierung: Kleinbuchstaben, ss statt ß, Diakritika entfernen */
+/* Normalisierung */
 function norm(s){
   if(!s) return '';
   return s
@@ -454,7 +467,6 @@ function setupSpeechSearch(){
     micBtn.title = 'Sprachsuche starten';
   };
   rec.onerror = (ev)=>{
-    // typische Fehler: not-allowed, no-speech, aborted
     if(ev && ev.error && ev.error !== 'aborted'){
       alert('Sprachsuche Fehler: ' + ev.error);
     }
@@ -465,7 +477,6 @@ function setupSpeechSearch(){
     if(!text) return;
     const q = $('#q');
     q.value = text;
-    // sofort suchen (debounce umgehen)
     doSearch(text);
   };
 }
