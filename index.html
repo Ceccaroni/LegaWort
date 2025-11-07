@@ -9,49 +9,56 @@
 </head>
 <body>
 <header class="app-header" role="banner">
-  <h1>Legasthenie-Wörterbuch <span class="badge">CH-DE</span></h1>
-  <div class="controls" role="region" aria-label="Einstellungen">
-    <label>
-      <div class="search-row">
-        <label for="q" class="visually-hidden">Suche</label>
-        <input id="q" class="search" type="search" placeholder="Wort suchen…" autocomplete="off" />
-        <button id="btn-mic" class="btn mic" type="button" aria-label="Sprachsuche starten/stoppen">🎙</button>
+  <div class="header-bar">
+    <h1>Legasthenie-Wörterbuch <span class="badge">CH-DE</span></h1>
+    <div class="settings-wrapper">
+      <button id="btn-settings" class="btn btn-icon settings-toggle" type="button" aria-label="Einstellungen öffnen" aria-expanded="false" aria-controls="settings-panel">
+        <span class="burger" aria-hidden="true"></span>
+      </button>
+      <div id="settings-panel" class="settings-panel" role="region" aria-label="Einstellungen" hidden>
+        <div class="toggles">
+          <label class="switch">
+            <input id="toggle-dys" type="checkbox" />
+            <span>Dyslexie-Modus</span>
+          </label>
+          <label class="switch">
+            <input id="toggle-ruler" type="checkbox" />
+            <span>Leselineal</span>
+          </label>
+          <label class="switch">
+            <input id="toggle-contrast" type="checkbox" />
+            <span>Hoher Kontrast</span>
+          </label>
+          <label class="switch">
+            <input id="toggle-syll" type="checkbox" checked />
+            <span>Silben anzeigen</span>
+          </label>
+        </div>
+        <div class="sliders">
+          <label>
+            <span>Buchstabenabstand</span>
+            <input id="ls" type="range" min="0" max="12" step="1" value="3" />
+          </label>
+          <label>
+            <span>Zeilenhöhe</span>
+            <input id="lh" type="range" min="12" max="24" step="1" value="18" />
+          </label>
+        </div>
+        <div class="io">
+          <button id="btn-import" type="button" class="btn btn-secondary">Import</button>
+          <button id="btn-clear-user" type="button" class="btn btn-warning" title="Benutzerdaten löschen">Benutzerdaten leeren</button>
+          <input id="file" type="file" accept=".json,.csv,text/csv" hidden />
+        </div>
       </div>
-    </label>
-    <div class="toggles">
-      <label class="switch">
-        <input id="toggle-dys" type="checkbox" />
-        <span>Dyslexie-Modus</span>
-      </label>
-      <label class="switch">
-        <input id="toggle-ruler" type="checkbox" />
-        <span>Leselineal</span>
-      </label>
-      <label class="switch">
-        <input id="toggle-contrast" type="checkbox" />
-        <span>Hoher Kontrast</span>
-      </label>
-      <label class="switch">
-        <input id="toggle-syll" type="checkbox" checked />
-        <span>Silben anzeigen</span>
-      </label>
     </div>
-    <div class="sliders">
-      <label>
-        <span>Buchstabenabstand</span>
-        <input id="ls" type="range" min="0" max="12" step="1" value="3" />
-      </label>
-      <label>
-        <span>Zeilenhöhe</span>
-        <input id="lh" type="range" min="12" max="24" step="1" value="18" />
-      </label>
-    </div>
-    <!-- Buttons rechts ausrichten, Export oben entfernt -->
-    <div class="io" style="justify-content:flex-end">
-      <button id="btn-import" type="button" class="btn btn-secondary">Import</button>
-      <button id="btn-clear-user" type="button" class="btn btn-warning" title="Benutzerdaten löschen">Benutzerdaten leeren</button>
-      <input id="file" type="file" accept=".json,.csv,text/csv" hidden />
-    </div>
+  </div>
+  <div class="search-row">
+    <label for="q" class="visually-hidden">Suche</label>
+    <input id="q" class="search" type="search" placeholder="Wort suchen…" autocomplete="off" />
+    <button id="btn-mic" class="btn btn-icon mic" type="button" aria-label="Sprachsuche starten/stoppen">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span class="icon" aria-hidden="true"></span>
+    </button>
   </div>
 </header>
 
@@ -61,9 +68,9 @@
   <div class="learn-head">
     <h2>Lernwörter <span id="learn-count" class="badge">0</span></h2>
     <div class="learn-actions">
-      <button id="learn-export-csv" type="button" class="btn btn-sm btn-secondary">Export CSV</button>
-      <button id="learn-export-json" type="button" class="btn btn-sm btn-secondary">Export JSON</button>
-      <button id="learn-clear" type="button" class="btn btn-sm btn-warning" title="Liste leeren">Leeren</button>
+      <button id="learn-export-csv" type="button" class="btn btn-secondary">Export CSV</button>
+      <button id="learn-export-json" type="button" class="btn btn-secondary">Export JSON</button>
+      <button id="learn-clear" type="button" class="btn btn-warning" title="Liste leeren">Leeren</button>
     </div>
   </div>
   <ol id="learn-list" class="learn-list"></ol>
