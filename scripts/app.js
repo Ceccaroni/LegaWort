@@ -79,11 +79,26 @@ const rulerEl = $('#ruler');
   $('#toggle-contrast').addEventListener('change', (e)=>{ state.contrast = e.target.checked; document.body.classList.toggle('contrast', state.contrast); saveSettings(); });
 
   let lastPointerY = null;
+  const getRulerHeight = ()=>{
+    if(!rulerEl) return 36;
+    const h = rulerEl.offsetHeight;
+    if(h) return h;
+    const parsed = parseFloat(getComputedStyle(rulerEl).height);
+    return Number.isFinite(parsed) ? parsed : 36;
+  };
   const applyRulerPosition = (y)=>{
     if(typeof y !== 'number' || !rulerEl) return;
-    const h = rulerEl.getBoundingClientRect().height || 36;
-    const clamped = Math.max(0, Math.min(window.innerHeight - h, y - h/2));
+    const h = getRulerHeight();
+    const maxTop = Math.max(0, window.innerHeight - h);
+    const clamped = Math.min(maxTop, Math.max(0, y - h/2));
     rulerEl.style.top = clamped + 'px';
+  };
+  const rememberPointerY = (y)=>{
+    if(typeof y !== 'number') return;
+    lastPointerY = y;
+    if(state.ruler){
+      applyRulerPosition(lastPointerY);
+    }
   };
 
   $('#toggle-ruler').addEventListener('change', (e)=>{
@@ -125,32 +140,35 @@ const rulerEl = $('#ruler');
   // TTS
   setupVoices();
 
-  // Leselineal: robuste Pointer-/Touch-Listener auf Window + Document
+  // Leselineal: robuste Pointer-/Touch-Listener auf Dokumentebene
   const resolvePointerY = (e)=>{
     if(typeof e?.clientY === 'number') return e.clientY;
+    if(e?.pageY && !e.touches) return e.pageY - window.pageYOffset;
     if(e?.touches && e.touches[0]) return e.touches[0].clientY;
     if(e?.changedTouches && e.changedTouches[0]) return e.changedTouches[0].clientY;
     return null;
   };
 
-  function onPointerMove(e){
-    const y0 = resolvePointerY(e);
-    if(typeof y0 === 'number'){
-      lastPointerY = y0;
-    }
-    if(!state.ruler || typeof lastPointerY !== 'number') return;
-    applyRulerPosition(lastPointerY);
-  }
-  const pointerOpts = { passive: true };
-  const touchOpts = { passive: false };
-  window.addEventListener('pointermove', onPointerMove, pointerOpts);
-  window.addEventListener('pointerdown', onPointerMove, pointerOpts);
-  window.addEventListener('mousemove',    onPointerMove, pointerOpts);
-  document.addEventListener('mousemove',  onPointerMove, pointerOpts);
-  window.addEventListener('touchmove',    onPointerMove, touchOpts);
-  window.addEventListener('touchstart',   onPointerMove, touchOpts);
-  document.addEventListener('touchmove',  onPointerMove, touchOpts);
-  document.addEventListener('touchstart', onPointerMove, touchOpts);
+  const handlePointerUpdate = (e)=>{
+    const y = resolvePointerY(e);
+    if(typeof y !== 'number') return;
+    rememberPointerY(y);
+  };
+
+  const pointerTargets = [document, window];
+  const passivePointer = { passive: true };
+  pointerTargets.forEach((target)=>{
+    ['pointermove', 'pointerdown', 'mousemove'].forEach((evt)=>{
+      target.addEventListener(evt, handlePointerUpdate, passivePointer);
+    });
+  });
+
+  const touchListenerOptions = { passive: false };
+  pointerTargets.forEach((target)=>{
+    ['touchstart', 'touchmove'].forEach((evt)=>{
+      target.addEventListener(evt, handlePointerUpdate, touchListenerOptions);
+    });
+  });
 })();
 
 function hydrateSettings(){
