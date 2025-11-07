@@ -53,7 +53,7 @@ const rulerEl = $('#ruler');
   $('#file').addEventListener('change', onImport);
   $('#btn-export').addEventListener('click', onExport);
 
-  // Benutzerdaten leeren
+  // Benutzerdaten leeren (direktes Binding)
   const clearBtn = document.getElementById('btn-clear-user');
   if(clearBtn){ clearBtn.addEventListener('click', clearUserData); }
 
@@ -305,7 +305,7 @@ async function onImport(ev){
   if(/\.json$/i.test(file.name)){
     try{
       const obj = JSON.parse(text);
-      if(Array.isArray(obj)){ // z. B. 5000er Wortliste: ["Abend", ...]
+      if(Array.isArray(obj)){ // z. B. 5000er Wortliste
         entries = obj.map(s => ({ wort: String(s) }));
       }else{
         entries = obj.entries || obj.items || [];
@@ -316,7 +316,6 @@ async function onImport(ev){
   }
   if(!Array.isArray(entries)){ alert('Keine Liste gefunden.'); return; }
 
-  // Normalisieren auf Schema
   const normed = entries.map(e => ({
     wort: (e.wort||e.word||'').replace(/ß/g,'ss').trim(),
     silben: e.silben ? String(e.silben).split(/[-·\s]/).filter(Boolean) : [],
@@ -329,7 +328,6 @@ async function onImport(ev){
       : []
   })).filter(x => x.wort);
 
-  // Merge mit Dubletten-Schutz (Schlüssel = normalisiertes Lemma)
   const m = mergeUserData(state.userData||[], normed);
   state.userData = m.out;
   localStorage.setItem('lw_user_entries', JSON.stringify(state.userData));
@@ -426,19 +424,27 @@ function addLearn(word){
   }
 }
 
-/* Aktionen unten */
+/* Delegation: greift auch, wenn ein früher Fehler direktes Binding blockiert */
 document.addEventListener('click', (e)=>{
-  if(e.target && e.target.id==='learn-export-csv'){
+  const t = e.target;
+  if(!t) return;
+
+  if(t.id==='btn-clear-user'){
+    clearUserData();
+    return;
+  }
+
+  if(t.id==='learn-export-csv'){
     const rows = ['wort'];
     state.learnWords.forEach(w => rows.push('"'+w.replace(/"/g,'""')+'"'));
     const blob = new Blob([rows.join('\n')], {type:'text/csv'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'lernwoerter.csv'; a.click(); URL.revokeObjectURL(url);
-  }else if(e.target && e.target.id==='learn-export-json'){
+  }else if(t.id==='learn-export-json'){
     const blob = new Blob([JSON.stringify({lernwoerter: state.learnWords}, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'lernwoerter.json'; a.click(); URL.revokeObjectURL(url);
-  }else if(e.target && e.target.id==='learn-clear'){
+  }else if(t.id==='learn-clear'){
     if(confirm('Liste wirklich leeren?')){ state.learnWords = []; saveLearn(); }
   }
 });
