@@ -63,7 +63,16 @@ const rulerEl = $('#ruler');
   $('#toggle-syll').addEventListener('change', (e)=>{ state.showSyll = e.target.checked; render(); saveSettings(); });
   $('#toggle-dys').addEventListener('change', (e)=>{ state.dys = e.target.checked; document.body.classList.toggle('dys', state.dys); saveSettings(); });
   $('#toggle-contrast').addEventListener('change', (e)=>{ state.contrast = e.target.checked; document.body.classList.toggle('contrast', state.contrast); saveSettings(); });
-  $('#toggle-ruler').addEventListener('change', (e)=>{ state.ruler = e.target.checked; rulerEl.hidden = !state.ruler; saveSettings(); });
+$('#toggle-ruler').addEventListener('change', (e)=>{
+  state.ruler = e.target.checked;
+  rulerEl.hidden = !state.ruler;
+
+  if (state.ruler) {
+    // Einmalige sinnvolle Startposition setzen, bevor Maus bewegt wird
+    const h = rulerEl.getBoundingClientRect().height || 36;
+    const y = Math.max(0, (window.innerHeight * 0.40) - h / 2);
+    rulerEl.style.top = y + 'px';
+  } saveSettings(); });
 
   $('#ls').addEventListener('input', (e)=>{ state.ls = +e.target.value; document.documentElement.style.setProperty('--ls', (state.ls/100)+'em'); saveSettings(); });
   $('#lh').addEventListener('input', (e)=>{ state.lh = +e.target.value; document.documentElement.style.setProperty('--lh', (state.lh/10)); saveSettings(); });
