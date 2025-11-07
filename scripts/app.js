@@ -11,6 +11,8 @@ const state = {
   ruler: false,
   ls: 3,
   lh: 18,
+  lastResults: [],
+  lastQuery: '',
   learnWords: [],
   // Grossdatensatz via Prefix-Chunks (optional)
   chunkIndex: null,        // { prefixLen: 2, prefixes: { "aa": "aa.json", ... } }
@@ -63,19 +65,23 @@ const rulerEl = $('#ruler');
 
   // UI
   $('#q').addEventListener('input', onSearch);
+  $('#toggle-syll').addEventListener('change', (e)=>{
+    state.showSyll = e.target.checked;
+    render(state.lastResults, state.lastQuery);
+    saveSettings();
+  });
   $('#toggle-dys').addEventListener('change', (e)=>{
-  state.dys = e.target.checked;
-  document.body.classList.toggle('dys', state.dys);
-  doSearch($('#q').value);   // statt render();
-  saveSettings();
-});
-
-  $('#toggle-dys').addEventListener('change', (e)=>{ state.dys = e.target.checked; document.body.classList.toggle('dys', state.dys); saveSettings(); });
+    state.dys = e.target.checked;
+    document.body.classList.toggle('dys', state.dys);
+    render(state.lastResults, state.lastQuery);
+    saveSettings();
+  });
   $('#toggle-contrast').addEventListener('change', (e)=>{ state.contrast = e.target.checked; document.body.classList.toggle('contrast', state.contrast); saveSettings(); });
 
   $('#toggle-ruler').addEventListener('change', (e)=>{
     state.ruler = e.target.checked;
     rulerEl.hidden = !state.ruler;
+    rulerEl.setAttribute('aria-hidden', String(!state.ruler));
 
     if (state.ruler) {
       // Feste Basis-Positionierung sicherstellen (Browser-Defaults neutralisieren)
@@ -136,12 +142,15 @@ function hydrateSettings(){
 
   // Immer mit ausgeschaltetem Leselineal starten (Policy)
   state.ruler = false;
+  state.lastResults = [];
+  state.lastQuery = '';
 
   $('#toggle-syll').checked = state.showSyll;
   $('#toggle-dys').checked = state.dys;
   $('#toggle-contrast').checked = state.contrast;
   $('#toggle-ruler').checked = false;          // Checkbox sicher "off"
   rulerEl.hidden = true;                       // Lineal verstecken
+  rulerEl.setAttribute('aria-hidden', 'true');
 
   document.body.classList.toggle('dys', state.dys);
   document.body.classList.toggle('contrast', state.contrast);
@@ -304,7 +313,9 @@ function distance(a,b){
 
 /* Rendering */
 function render(list, query=''){
-  const items = (list || []);
+  const items = Array.isArray(list) ? list.slice() : [];
+  state.lastResults = items;
+  state.lastQuery = typeof query === 'string' ? query : '';
   resultsEl.innerHTML = '';
   if(items.length === 0){
     resultsEl.innerHTML = `<div class="card"><h2>Suche starten</h2><p class="definition">Gib mindestens zwei Buchstaben ein. Es werden nur Treffer angezeigt, nicht das ganze Wörterbuch.</p></div>`;
@@ -443,6 +454,9 @@ function setupSpeechSearch(){
   const micBtn = document.getElementById('btn-mic');
   if(!micBtn) return;
 
+  micBtn.setAttribute('aria-pressed', 'false');
+  micBtn.title = 'Sprachsuche starten';
+
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR){
     micBtn.disabled = true;
@@ -451,22 +465,49 @@ function setupSpeechSearch(){
   }
 
   const rec = new SR();
-  rec.lang = 'de-CH';
   rec.interimResults = false;
   rec.maxAlternatives = 1;
+  rec.continuous = false;
 
   let active = false;
 
-  function start(){
-    try{
-      rec.lang = navigator.language && /^de-CH/i.test(navigator.language) ? 'de-CH' : 'de-DE';
-      rec.start();
-    }catch(_){}
+  function updateLanguage(){
+    const lang = navigator.language && /^de-CH/i.test(navigator.language) ? 'de-CH' : 'de-DE';
+    rec.lang = lang;
   }
-  function stop(){ try{ rec.stop(); }catch(_){} }
+
+  function resetUI(message){
+    active = false;
+    micBtn.setAttribute('aria-pressed','false');
+    micBtn.classList.remove('rec');
+    micBtn.title = message || 'Sprachsuche starten';
+  }
+
+  function start(){
+    if(active) return;
+    updateLanguage();
+    try{
+      rec.start();
+    }catch(err){
+      resetUI();
+      console.warn('SpeechRecognition start() fehlgeschlagen', err);
+    }
+  }
+
+  function stop(){
+    try{
+      rec.stop();
+    }catch(err){
+      resetUI();
+      console.warn('SpeechRecognition stop() fehlgeschlagen', err);
+    }
+  }
 
   micBtn.addEventListener('click', ()=>{
-    if(active){ stop(); return; }
+    if(active){
+      stop();
+      return;
+    }
     start();
   });
 
@@ -476,24 +517,40 @@ function setupSpeechSearch(){
     micBtn.classList.add('rec');
     micBtn.title = 'Zuhören … erneut klicken zum Stoppen';
   };
+
   rec.onend = ()=>{
-    active = false;
-    micBtn.setAttribute('aria-pressed','false');
-    micBtn.classList.remove('rec');
-    micBtn.title = 'Sprachsuche starten';
+    resetUI();
   };
+
   rec.onerror = (ev)=>{
-    if(ev && ev.error && ev.error !== 'aborted'){
+    if(!ev) return;
+    if(ev.error === 'not-allowed' || ev.error === 'service-not-allowed'){
+      resetUI('Mikrofonzugriff verweigert.');
+      micBtn.disabled = true;
+      micBtn.title = 'Zugriff auf das Mikrofon wurde blockiert.';
+      return;
+    }
+    if(ev.error === 'no-speech'){
+      resetUI('Keine Sprache erkannt – erneut versuchen.');
+      return;
+    }
+    if(ev.error !== 'aborted'){
+      resetUI();
       alert('Sprachsuche Fehler: ' + ev.error);
     }
   };
+
   rec.onresult = (ev)=>{
-    const res = ev.results && ev.results[0] && ev.results[0][0];
-    const text = res ? String(res.transcript||'').trim() : '';
+    const idx = ev.resultIndex ?? 0;
+    const list = ev.results && ev.results[idx] ? ev.results[idx] : (ev.results && ev.results[0]);
+    const alt = list && list[0];
+    const text = alt ? String(alt.transcript || '').trim() : '';
     if(!text) return;
     const q = $('#q');
+    if(!q) return;
     q.value = text;
-    doSearch(text);
+    q.focus();
+    q.dispatchEvent(new Event('input', { bubbles: true }));
   };
 }
 
