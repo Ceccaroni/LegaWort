@@ -23,6 +23,20 @@ const state = {
 const $ = sel => document.querySelector(sel);
 const resultsEl = $('#results');
 const rulerEl = $('#ruler');
+const SETTINGS_PANEL_VARS = [
+  '--settings-panel-top',
+  '--settings-panel-left',
+  '--settings-panel-right',
+  '--settings-panel-gap',
+  '--settings-panel-caret-right',
+  '--settings-panel-caret-opacity'
+];
+
+function clearSettingsPanelVars(){
+  const rootStyle = document.documentElement?.style;
+  if(!rootStyle) return;
+  SETTINGS_PANEL_VARS.forEach(prop => rootStyle.removeProperty(prop));
+}
 
 (async function init(){
   // Basisdaten (optional)
@@ -68,24 +82,72 @@ const rulerEl = $('#ruler');
   const settingsPanel = $('#settings-panel');
   const settingsWrapper = settingsToggle ? settingsToggle.closest('.settings-wrapper') : null;
 
+  const rootStyle = document.documentElement.style;
+  const updateSettingsPanelMetrics = ()=>{
+    if(!settingsPanel || !settingsToggle) return;
+    if(settingsPanel.hidden || settingsPanel.hasAttribute('hidden')) return;
+    const toggleRect = settingsToggle.getBoundingClientRect();
+    const gap = Math.max(12, Math.min(window.innerWidth * 0.05, 24));
+    const top = Math.max(gap, toggleRect.bottom + gap);
+    rootStyle.setProperty('--settings-panel-gap', `${gap}px`);
+    rootStyle.setProperty('--settings-panel-top', `${top}px`);
+
+    if(window.innerWidth <= 640){
+      rootStyle.setProperty('--settings-panel-left', `${gap}px`);
+      rootStyle.setProperty('--settings-panel-right', `${gap}px`);
+      rootStyle.setProperty('--settings-panel-caret-opacity', '0');
+      rootStyle.removeProperty('--settings-panel-caret-right');
+      return;
+    }
+
+    const panelWidth = Math.min(420, window.innerWidth - gap * 2);
+    let right = Math.max(gap, window.innerWidth - toggleRect.right);
+    if(window.innerWidth - right - panelWidth < gap){
+      right = Math.max(gap, window.innerWidth - panelWidth - gap);
+    }
+    const left = Math.max(gap, window.innerWidth - right - panelWidth);
+    rootStyle.setProperty('--settings-panel-left', `${left}px`);
+    rootStyle.setProperty('--settings-panel-right', `${right}px`);
+    rootStyle.setProperty('--settings-panel-caret-opacity', '1');
+
+    requestAnimationFrame(()=>{
+      if(!settingsPanel || settingsPanel.hidden || settingsPanel.hasAttribute('hidden')) return;
+      const panelRect = settingsPanel.getBoundingClientRect();
+      const buttonCenter = toggleRect.left + (toggleRect.width / 2);
+      const caretRight = Math.min(
+        Math.max(18, panelRect.right - buttonCenter - 8),
+        panelRect.width - 24
+      );
+      rootStyle.setProperty('--settings-panel-caret-right', `${caretRight}px`);
+    });
+  };
+
   const setSettingsOpen = (open)=>{
     if(!settingsPanel || !settingsToggle) return;
-    settingsPanel.hidden = !open;
     if(open){
+      settingsPanel.hidden = false;
       settingsPanel.removeAttribute('hidden');
-    }else{
-      settingsPanel.setAttribute('hidden', '');
-    }
-    settingsPanel.style.display = open ? 'flex' : 'none';
-    settingsToggle.setAttribute('aria-expanded', String(open));
-    if(settingsWrapper){
-      settingsWrapper.classList.toggle('open', open);
-    }
-    if(open && document.activeElement === settingsToggle){
-      const focusTarget = settingsPanel.querySelector('input, button, select, textarea, [tabindex]:not([tabindex="-1"])');
-      if(focusTarget){
-        focusTarget.focus({ preventScroll: true });
+      settingsPanel.style.display = 'flex';
+      settingsToggle.setAttribute('aria-expanded', 'true');
+      if(settingsWrapper){
+        settingsWrapper.classList.add('open');
       }
+      updateSettingsPanelMetrics();
+      if(document.activeElement === settingsToggle){
+        const focusTarget = settingsPanel.querySelector('input, button, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if(focusTarget){
+          focusTarget.focus({ preventScroll: true });
+        }
+      }
+    }else{
+      settingsPanel.hidden = true;
+      settingsPanel.setAttribute('hidden', '');
+      settingsPanel.style.display = 'none';
+      settingsToggle.setAttribute('aria-expanded', 'false');
+      if(settingsWrapper){
+        settingsWrapper.classList.remove('open');
+      }
+      clearSettingsPanelVars();
     }
   };
 
@@ -114,6 +176,9 @@ const rulerEl = $('#ruler');
         }
       }
     });
+
+    window.addEventListener('resize', updateSettingsPanelMetrics);
+    window.addEventListener('scroll', updateSettingsPanelMetrics, { passive: true });
   }
 
   $('#q').addEventListener('input', onSearch);
@@ -249,6 +314,7 @@ function hydrateSettings(){
     settingsPanel.setAttribute('hidden', '');
     settingsPanel.style.display = 'none';
   }
+  clearSettingsPanelVars();
   const settingsToggle = $('#btn-settings');
   if(settingsToggle){
     settingsToggle.setAttribute('aria-expanded', 'false');
