@@ -71,6 +71,12 @@ const rulerEl = $('#ruler');
   const setSettingsOpen = (open)=>{
     if(!settingsPanel || !settingsToggle) return;
     settingsPanel.hidden = !open;
+    if(open){
+      settingsPanel.removeAttribute('hidden');
+    }else{
+      settingsPanel.setAttribute('hidden', '');
+    }
+    settingsPanel.style.display = open ? 'flex' : 'none';
     settingsToggle.setAttribute('aria-expanded', String(open));
     if(settingsWrapper){
       settingsWrapper.classList.toggle('open', open);
@@ -84,6 +90,8 @@ const rulerEl = $('#ruler');
   };
 
   const closeSettings = ()=> setSettingsOpen(false);
+
+  setSettingsOpen(false);
 
   if(settingsToggle && settingsPanel){
     settingsToggle.addEventListener('click', (e)=>{
@@ -234,6 +242,21 @@ function hydrateSettings(){
   $('#toggle-ruler').checked = false;          // Checkbox sicher "off"
   rulerEl.hidden = true;                       // Lineal verstecken
   rulerEl.setAttribute('aria-hidden', 'true');
+
+  const settingsPanel = $('#settings-panel');
+  if(settingsPanel){
+    settingsPanel.hidden = true;
+    settingsPanel.setAttribute('hidden', '');
+    settingsPanel.style.display = 'none';
+  }
+  const settingsToggle = $('#btn-settings');
+  if(settingsToggle){
+    settingsToggle.setAttribute('aria-expanded', 'false');
+    const wrapper = settingsToggle.closest('.settings-wrapper');
+    if(wrapper){
+      wrapper.classList.remove('open');
+    }
+  }
 
   document.body.classList.toggle('dys', state.dys);
   document.body.classList.toggle('contrast', state.contrast);
