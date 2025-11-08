@@ -710,7 +710,15 @@ function filterMatches(list, patterns, baseQuery){
     entry._dlScore = 1 / (1 + bestLegacy);
     entry._dist = bestV2;
     entry._wdl = wdlScoreV2(bestV2);
+    entry._len = key.length;
+    entry._lenDelta = key.length - baseLen;
+    entry._freqHint = getEntryFrequency(entry);
     scored.push(entry);
+  }
+  if(!scored.length) return scored;
+  const ranked = rankV2(scored, baseQuery);
+  if(Array.isArray(ranked) && ranked.length){
+    return ranked;
   }
   scored.sort((a, b)=>{
     const da = typeof a._dlDist === 'number' ? a._dlDist : Infinity;
@@ -719,6 +727,27 @@ function filterMatches(list, patterns, baseQuery){
     return String(a.wort || '').localeCompare(String(b.wort || ''), 'de');
   });
   return scored;
+}
+
+function getEntryFrequency(entry){
+  if(!entry || typeof entry !== 'object') return 0;
+  const candidates = [
+    entry.freq,
+    entry.frequency,
+    entry.freqScore,
+    entry.rank,
+    entry.count,
+    entry.weight,
+    entry.frequencyScore,
+    entry.freq_rank,
+    entry.meta?.freq,
+    entry.meta?.frequency
+  ];
+  for(const value of candidates){
+    const num = typeof value === 'string' ? Number(value) : value;
+    if(Number.isFinite(num) && num > 0) return num;
+  }
+  return 0;
 }
 
 function tokenizeKey(key){
@@ -761,6 +790,72 @@ function insertionCost(index){
 
 function deletionCost(index){
   return positionWeight(index);
+}
+
+function computeScoreV2(metrics){
+  if(!metrics || typeof metrics !== 'object') return 0;
+  const prefix = Number.isFinite(metrics.prefixScore) ? metrics.prefixScore : 0;
+  const phon = Number.isFinite(metrics.phonScore) ? metrics.phonScore : 0;
+  const wdl = Number.isFinite(metrics.weightedDL) ? metrics.weightedDL : 0;
+  const freq = Number.isFinite(metrics.freq) && metrics.freq > 0 ? metrics.freq : 0;
+  const lenDelta = Number.isFinite(metrics.lenDelta) ? metrics.lenDelta : 0;
+  const freqTerm = freq > 0 ? (Math.log1p ? Math.log1p(freq) : Math.log(1 + freq)) : 0;
+  return (3 * prefix) + (2.5 * phon) + (2 * wdl) + (0.8 * freqTerm) - (0.3 * Math.abs(lenDelta));
+}
+
+function rankV2(candidates, query){
+  if(!Array.isArray(candidates) || !candidates.length) return candidates || [];
+  const q = typeof query === 'string' ? query : '';
+  const qLen = q.length;
+  const scored = candidates.map(entry => {
+    const key = entryKey(entry);
+    const len = key.length;
+    const prefixLen = q && key ? longestCommonPrefix(key, q) : 0;
+    const prefixScore = qLen ? prefixLen / qLen : 0;
+    const phonScore = typeof entry._dlScore === 'number' ? entry._dlScore : 0;
+    const weightedDL = typeof entry._wdl === 'number' ? entry._wdl : phonScore;
+    const freq = Number.isFinite(entry._freqHint) ? entry._freqHint : getEntryFrequency(entry);
+    const lenDelta = Number.isFinite(entry._lenDelta) ? entry._lenDelta : (len - qLen);
+    const score = computeScoreV2({
+      prefixScore,
+      phonScore,
+      weightedDL,
+      freq,
+      lenDelta
+    });
+    entry._rankV2 = score;
+    entry._prefixScore = prefixScore;
+    entry._phonScore = phonScore;
+    entry._freqHint = freq;
+    entry._len = len;
+    entry._lenDelta = lenDelta;
+    return {
+      entry,
+      score,
+      dist: Number.isFinite(entry._dist) ? entry._dist : Number.isFinite(entry._dlDist) ? entry._dlDist : Infinity,
+      freq,
+      len
+    };
+  });
+
+  scored.sort((a, b) => {
+    if(a.score !== b.score) return b.score - a.score;
+    if(a.dist !== b.dist) return a.dist - b.dist;
+    if(a.freq !== b.freq) return b.freq - a.freq;
+    if(a.len !== b.len) return a.len - b.len;
+    const aw = String(a.entry.wort || '');
+    const bw = String(b.entry.wort || '');
+    return aw.localeCompare(bw, 'de');
+  });
+
+  return scored.map(item => item.entry);
+}
+
+function longestCommonPrefix(a, b){
+  const len = Math.min(a.length, b.length);
+  let i = 0;
+  while(i < len && a[i] === b[i]) i += 1;
+  return i;
 }
 
 function substitutionCostV2(aToken, bToken, index){
