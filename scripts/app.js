@@ -610,13 +610,97 @@ async function doSearch(input){
     }
     return false;
   }
-  scored.sort((a, b)=>{
-    const da = typeof a._dlDist === 'number' ? a._dlDist : Infinity;
-    const db = typeof b._dlDist === 'number' ? b._dlDist : Infinity;
-    if(da !== db) return da - db;
-    return String(a.wort || '').localeCompare(String(b.wort || ''), 'de');
+  return out;
+}
+
+function positionWeight(index){
+  return index <= 2 ? 2 : 1;
+}
+
+function insertionCost(index){
+  return positionWeight(index);
+}
+
+function deletionCost(index){
+  return positionWeight(index);
+}
+
+function computeScoreV2(metrics){
+  if(!metrics || typeof metrics !== 'object') return 0;
+  const prefix = Number.isFinite(metrics.prefixScore) ? metrics.prefixScore : 0;
+  const phon = Number.isFinite(metrics.phonScore) ? metrics.phonScore : 0;
+  const wdl = Number.isFinite(metrics.weightedDL) ? metrics.weightedDL : 0;
+  const freq = Number.isFinite(metrics.freq) && metrics.freq > 0 ? metrics.freq : 0;
+  const lenDelta = Number.isFinite(metrics.lenDelta) ? metrics.lenDelta : 0;
+  const freqTerm = freq > 0 ? (Math.log1p ? Math.log1p(freq) : Math.log(1 + freq)) : 0;
+  return (3 * prefix) + (2.5 * phon) + (2 * wdl) + (0.8 * freqTerm) - (0.3 * Math.abs(lenDelta));
+}
+
+function rankV2(candidates, query){
+  if(!Array.isArray(candidates) || !candidates.length) return candidates || [];
+  const q = typeof query === 'string' ? query : '';
+  const qLen = q.length;
+  const qPhon = phonKeyV2(q);
+  const scored = candidates.map(entry => {
+    const key = entryKey(entry);
+    const len = key.length;
+    const prefixLen = q && key ? longestCommonPrefix(key, q) : 0;
+    const prefixScore = qLen ? prefixLen / qLen : 0;
+    const candidatePhon = typeof entry.phon === 'string' ? entry.phon : '';
+    const phonScore = qPhon && candidatePhon && qPhon === candidatePhon ? 1 : 0;
+    const legacyPhonScore = typeof entry._dlScore === 'number' ? entry._dlScore : 0;
+    const weightedDL = typeof entry._wdl === 'number' ? entry._wdl : legacyPhonScore;
+    const freq = Number.isFinite(entry._freqHint) ? entry._freqHint : getEntryFrequency(entry);
+    const lenDelta = Number.isFinite(entry._lenDelta) ? entry._lenDelta : (len - qLen);
+    const score = computeScoreV2({
+      prefixScore,
+      phonScore,
+      weightedDL,
+      freq,
+      lenDelta
+    });
+    entry._rankV2 = score;
+    entry._prefixScore = prefixScore;
+    entry._phonScore = phonScore;
+    entry._phonKey = candidatePhon;
+    entry._freqHint = freq;
+    entry._len = len;
+    entry._lenDelta = lenDelta;
+    return {
+      entry,
+      score,
+      dist: Number.isFinite(entry._dist) ? entry._dist : Number.isFinite(entry._dlDist) ? entry._dlDist : Infinity,
+      freq,
+      len
+    };
   });
-  return scored;
+
+  scored.sort((a, b) => {
+    if(a.score !== b.score) return b.score - a.score;
+    if(a.dist !== b.dist) return a.dist - b.dist;
+    if(a.freq !== b.freq) return b.freq - a.freq;
+    if(a.len !== b.len) return a.len - b.len;
+    const aw = String(a.entry.wort || '');
+    const bw = String(b.entry.wort || '');
+    return aw.localeCompare(bw, 'de');
+  });
+
+  return scored.map(item => item.entry);
+}
+
+function longestCommonPrefix(a, b){
+  const len = Math.min(a.length, b.length);
+  let i = 0;
+  while(i < len && a[i] === b[i]) i += 1;
+  return i;
+}
+
+function substitutionCostV2(aToken, bToken, index){
+  if(aToken === bToken) return 0;
+  const key = `${aToken}|${bToken}`;
+  const cost = WDL_SUB_COSTS_V2.get(key);
+  const base = typeof cost === 'number' ? cost : 1;
+  return base * positionWeight(index);
 }
 
   async function processPrefix(prefix){
@@ -642,8 +726,6 @@ async function doSearch(input){
     const pref = prefixQueue.shift();
     await processPrefix(pref);
   }
-  return out;
-}
 
   let results = filterMatches(candidates, patterns, primaryQuery).slice(0, SEARCH_MAX_RESULTS);
 
@@ -661,6 +743,8 @@ async function doSearch(input){
       if(results.length >= SEARCH_MIN_PRIMARY) break;
     }
   }
+  return dp[m][n];
+}
 
   if(results.length < SEARCH_MIN_PRIMARY){
     const variantSet = expandAnlautVariants(primaryQuery);
@@ -1039,9 +1123,9 @@ function renderCard(entry, query){
   const headwordPosRaw = (entry.def_src && entry.def_src.pos) || (Array.isArray(entry.tags) && entry.tags.length ? entry.tags[0] : '');
   const headword = displayHeadwordV2(entry.wort, headwordPosRaw);
   const primaryTag = posLabelV2(headwordPosRaw);
-  const w = esc(headword);
   const syllableText = state.showSyll ? (renderSilbenV2(entry) || showSyllables(entry)) : '';
-  const s = syllableText ? ' · ' + esc(syllableText) : '';
+  const headMarkup = highlightHeadV2(headword, query);
+  const syllMarkup = (state.showSyll && syllableText) ? `· ${esc(syllableText)}` : '';
   const tagLabels = [];
   if(primaryTag){
     tagLabels.push(primaryTag);
@@ -1055,17 +1139,17 @@ function renderCard(entry, query){
       }
     }
   }
-  const tags = tagLabels.map(t=>`<span class="tag">${esc(t)}</span>`).join(' ');
+  const tags = tagLabels.map(t=>`<span class="tag">${highlightHeadV2(t, query)}</span>`).join(' ');
   const def = esc(entry.erklaerung || '');
   const ex = (entry.beispiele||[]).map(x=>`<div class="example">„${esc(x)}“</div>`).join('');
 
   card.innerHTML = `
-    <h2>${highlight(w, query)}</h2>
+    <h2>${headMarkup}</h2>
     <div class="meta">
-      <span class="syll">${state.showSyll ? highlight(s.trim(), query) : ''}</span>
+      <span class="syll">${state.showSyll ? syllMarkup : ''}</span>
       ${tags}
     </div>
-    <div class="definition">${highlight(def, query)}</div>
+    <div class="definition">${def}</div>
     ${ex}
     <div class="actions">
       <button aria-label="Wort vorlesen" data-act="speak-word">Wort vorlesen</button>
@@ -1134,6 +1218,35 @@ function hydrateDefinitionForCard(card, entry, query){
     entry._defResolved = true;
     console.warn('def fetch failed', entry.wort, err);
   });
+}
+
+function highlightHeadV2(text, query){
+  if(text == null) return '';
+  const raw = String(text);
+  const safe = esc(raw);
+  if(!query) return safe;
+  const qNorm = normalizeV2(query);
+  if(!qNorm) return safe;
+  const chars = [];
+  let normalized = '';
+  for(let i = 0; i < raw.length; i++){
+    const segment = normalizeV2(raw[i]);
+    if(!segment) continue;
+    for(let j = 0; j < segment.length; j++){
+      normalized += segment[j];
+      chars.push(i);
+    }
+  }
+  const idx = normalized.indexOf(qNorm);
+  if(idx === -1) return safe;
+  const endIndexNorm = idx + qNorm.length - 1;
+  const start = chars[idx];
+  const end = chars[endIndexNorm];
+  if(start == null || end == null) return safe;
+  const before = esc(raw.slice(0, start));
+  const match = esc(raw.slice(start, end + 1));
+  const after = esc(raw.slice(end + 1));
+  return `${before}<mark>${match}</mark>${after}`;
 }
 
 function highlight(text, q){
