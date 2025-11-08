@@ -1,3 +1,11 @@
+// --- SAFE MODE FLAGS (HF2) ---
+window.LEGA_FLAGS = Object.assign(
+  { SAFE_MODE: true, V2_SEARCH: false, V2_RANK: false },
+  window.LEGA_FLAGS || {}
+);
+window.addEventListener("error", (e) => console.error("global error", e.message));
+// --- END SAFE MODE FLAGS ---
+
 /* Dyslexikon – CH-DE
    Keine externen Ressourcen, läuft auf GitHub Pages.
 */
@@ -181,19 +189,38 @@ function clearSettingsPanelVars(){
     window.addEventListener('scroll', updateSettingsPanelMetrics, { passive: true });
   }
 
-  $('#q').addEventListener('input', onSearch);
-  $('#toggle-syll').addEventListener('change', (e)=>{
-    state.showSyll = e.target.checked;
-    render(state.lastResults, state.lastQuery);
-    saveSettings();
-  });
-  $('#toggle-dys').addEventListener('change', (e)=>{
-    state.dys = e.target.checked;
-    document.body.classList.toggle('dys', state.dys);
-    render(state.lastResults, state.lastQuery);
-    saveSettings();
-  });
-  $('#toggle-contrast').addEventListener('change', (e)=>{ state.contrast = e.target.checked; document.body.classList.toggle('contrast', state.contrast); saveSettings(); });
+  const searchInput = $('#q');
+  if(searchInput){
+    searchInput.addEventListener('input', onSearch);
+  }
+
+  const toggleSyll = $('#toggle-syll');
+  if(toggleSyll){
+    toggleSyll.addEventListener('change', (e)=>{
+      state.showSyll = e.target.checked;
+      render(state.lastResults, state.lastQuery);
+      saveSettings();
+    });
+  }
+
+  const toggleDys = $('#toggle-dys');
+  if(toggleDys){
+    toggleDys.addEventListener('change', (e)=>{
+      state.dys = e.target.checked;
+      document.body.classList.toggle('dys', state.dys);
+      render(state.lastResults, state.lastQuery);
+      saveSettings();
+    });
+  }
+
+  const toggleContrast = $('#toggle-contrast');
+  if(toggleContrast){
+    toggleContrast.addEventListener('change', (e)=>{
+      state.contrast = e.target.checked;
+      document.body.classList.toggle('contrast', state.contrast);
+      saveSettings();
+    });
+  }
 
   let lastPointerY = null;
   const getRulerHeight = ()=>{
@@ -218,33 +245,64 @@ function clearSettingsPanelVars(){
     }
   };
 
-  $('#toggle-ruler').addEventListener('change', (e)=>{
-    state.ruler = e.target.checked;
-    rulerEl.hidden = !state.ruler;
-    rulerEl.setAttribute('aria-hidden', String(!state.ruler));
+  const toggleRuler = $('#toggle-ruler');
+  if(toggleRuler){
+    toggleRuler.addEventListener('change', (e)=>{
+      state.ruler = e.target.checked;
+      rulerEl.hidden = !state.ruler;
+      rulerEl.setAttribute('aria-hidden', String(!state.ruler));
 
-    if (state.ruler) {
-      // Feste Basis-Positionierung sicherstellen (Browser-Defaults neutralisieren)
-      rulerEl.style.position = 'fixed';
-      rulerEl.style.left = '0';
-      rulerEl.style.right = '0';
-      rulerEl.style.zIndex = '9999';
+      if (state.ruler) {
+        // Feste Basis-Positionierung sicherstellen (Browser-Defaults neutralisieren)
+        rulerEl.style.position = 'fixed';
+        rulerEl.style.left = '0';
+        rulerEl.style.right = '0';
+        rulerEl.style.zIndex = '9999';
 
-      // Einmalige sinnvolle Startposition setzen
-      requestAnimationFrame(()=>{
-        const y = typeof lastPointerY === 'number' ? lastPointerY : window.innerHeight * 0.40;
-        applyRulerPosition(y);
-      });
-    }
-    saveSettings();
-  });
+        // Einmalige sinnvolle Startposition setzen
+        requestAnimationFrame(()=>{
+          const y = typeof lastPointerY === 'number' ? lastPointerY : window.innerHeight * 0.40;
+          applyRulerPosition(y);
+        });
+      }
+      saveSettings();
+    });
+  }
 
-  $('#ls').addEventListener('input', (e)=>{ state.ls = +e.target.value; document.documentElement.style.setProperty('--ls', (state.ls/100)+'em'); saveSettings(); });
-  $('#lh').addEventListener('input', (e)=>{ state.lh = +e.target.value; document.documentElement.style.setProperty('--lh', (state.lh/10)); saveSettings(); });
+  const lsInput = $('#ls');
+  if(lsInput){
+    lsInput.addEventListener('input', (e)=>{
+      state.ls = +e.target.value;
+      document.documentElement.style.setProperty('--ls', (state.ls/100)+'em');
+      saveSettings();
+    });
+  }
+
+  const lhInput = $('#lh');
+  if(lhInput){
+    lhInput.addEventListener('input', (e)=>{
+      state.lh = +e.target.value;
+      document.documentElement.style.setProperty('--lh', (state.lh/10));
+      saveSettings();
+    });
+  }
 
   // Import/Export
-  $('#btn-import').addEventListener('click', ()=> $('#file').click());
-  $('#file').addEventListener('change', onImport);
+  const importBtn = $('#btn-import');
+  if(importBtn){
+    importBtn.addEventListener('click', ()=>{
+      const picker = $('#file');
+      if(picker){ picker.click(); }
+    });
+  }
+  const filePicker = $('#file');
+  if(filePicker){
+    filePicker.addEventListener('change', onImport);
+  }
+  const exportBtn = $('#btn-export');
+  if(exportBtn){
+    exportBtn.addEventListener('click', onExport);
+  }
 
   // Benutzerdaten leeren
   const clearBtn = document.getElementById('btn-clear-user');
@@ -460,6 +518,16 @@ function expandAnlautVariants(query){
   return variants;
 }
 
+function collectBuckets(queryNorm){
+  const q = typeof queryNorm === 'string' ? queryNorm : '';
+  const prefixLen = Math.max(1, state.chunkPrefixLen || 2);
+  const basePrefix = q.slice(0, prefixLen);
+  return {
+    basePrefix,
+    fallbackPrefixes: []
+  };
+}
+
 function collectBucketsV2(queryNorm, options){
   const q = typeof queryNorm === 'string' ? queryNorm : '';
   if(!q) return { basePrefix: '', fallbackPrefixes: [] };
@@ -560,7 +628,11 @@ async function ensureChunk(prefix){
   }
 }
 
-async function doSearch(input){
+function doSearch(input){
+  runSearch(input);
+}
+
+async function runSearch(input){
   const raw = typeof input === 'string' ? input : '';
   const trimmed = raw.trim();
   const q = matchKey(trimmed);
@@ -572,7 +644,20 @@ async function doSearch(input){
   }
 
   const prefixLen = Math.max(1, state.chunkPrefixLen || 2);
-  const bucketInfoV2 = collectBucketsV2(primaryQuery);
+  let bucketInfoV2 = { basePrefix: '', fallbackPrefixes: [] };
+  try {
+    if (!window.LEGA_FLAGS?.SAFE_MODE && window.LEGA_FLAGS?.V2_SEARCH && typeof collectBucketsV2 === 'function') {
+      const info = collectBucketsV2(primaryQuery);
+      if (info && typeof info === 'object') {
+        bucketInfoV2 = info;
+      }
+    } else {
+      bucketInfoV2 = collectBuckets(primaryQuery);
+    }
+  } catch (err) {
+    console.error('V2 search failed -> fallback', err);
+    bucketInfoV2 = collectBuckets(primaryQuery);
+  }
   const primaryPrefix = bucketInfoV2.basePrefix || primaryQuery.slice(0, prefixLen);
   const fallbackPrefixesV2 = bucketInfoV2.fallbackPrefixes || [];
   const processedPrefixes = new Set();
@@ -610,98 +695,6 @@ async function doSearch(input){
     }
     return false;
   }
-  return out;
-}
-
-function positionWeight(index){
-  return index <= 2 ? 2 : 1;
-}
-
-function insertionCost(index){
-  return positionWeight(index);
-}
-
-function deletionCost(index){
-  return positionWeight(index);
-}
-
-function computeScoreV2(metrics){
-  if(!metrics || typeof metrics !== 'object') return 0;
-  const prefix = Number.isFinite(metrics.prefixScore) ? metrics.prefixScore : 0;
-  const phon = Number.isFinite(metrics.phonScore) ? metrics.phonScore : 0;
-  const wdl = Number.isFinite(metrics.weightedDL) ? metrics.weightedDL : 0;
-  const freq = Number.isFinite(metrics.freq) && metrics.freq > 0 ? metrics.freq : 0;
-  const lenDelta = Number.isFinite(metrics.lenDelta) ? metrics.lenDelta : 0;
-  const freqTerm = freq > 0 ? (Math.log1p ? Math.log1p(freq) : Math.log(1 + freq)) : 0;
-  return (3 * prefix) + (2.5 * phon) + (2 * wdl) + (0.8 * freqTerm) - (0.3 * Math.abs(lenDelta));
-}
-
-function rankV2(candidates, query){
-  if(!Array.isArray(candidates) || !candidates.length) return candidates || [];
-  const q = typeof query === 'string' ? query : '';
-  const qLen = q.length;
-  const qPhon = phonKeyV2(q);
-  const scored = candidates.map(entry => {
-    const key = entryKey(entry);
-    const len = key.length;
-    const prefixLen = q && key ? longestCommonPrefix(key, q) : 0;
-    const prefixScore = qLen ? prefixLen / qLen : 0;
-    const candidatePhon = typeof entry.phon === 'string' ? entry.phon : '';
-    const phonScore = qPhon && candidatePhon && qPhon === candidatePhon ? 1 : 0;
-    const legacyPhonScore = typeof entry._dlScore === 'number' ? entry._dlScore : 0;
-    const weightedDL = typeof entry._wdl === 'number' ? entry._wdl : legacyPhonScore;
-    const freq = Number.isFinite(entry._freqHint) ? entry._freqHint : getEntryFrequency(entry);
-    const lenDelta = Number.isFinite(entry._lenDelta) ? entry._lenDelta : (len - qLen);
-    const score = computeScoreV2({
-      prefixScore,
-      phonScore,
-      weightedDL,
-      freq,
-      lenDelta
-    });
-    entry._rankV2 = score;
-    entry._prefixScore = prefixScore;
-    entry._phonScore = phonScore;
-    entry._phonKey = candidatePhon;
-    entry._freqHint = freq;
-    entry._len = len;
-    entry._lenDelta = lenDelta;
-    return {
-      entry,
-      score,
-      dist: Number.isFinite(entry._dist) ? entry._dist : Number.isFinite(entry._dlDist) ? entry._dlDist : Infinity,
-      freq,
-      len
-    };
-  });
-
-  scored.sort((a, b) => {
-    if(a.score !== b.score) return b.score - a.score;
-    if(a.dist !== b.dist) return a.dist - b.dist;
-    if(a.freq !== b.freq) return b.freq - a.freq;
-    if(a.len !== b.len) return a.len - b.len;
-    const aw = String(a.entry.wort || '');
-    const bw = String(b.entry.wort || '');
-    return aw.localeCompare(bw, 'de');
-  });
-
-  return scored.map(item => item.entry);
-}
-
-function longestCommonPrefix(a, b){
-  const len = Math.min(a.length, b.length);
-  let i = 0;
-  while(i < len && a[i] === b[i]) i += 1;
-  return i;
-}
-
-function substitutionCostV2(aToken, bToken, index){
-  if(aToken === bToken) return 0;
-  const key = `${aToken}|${bToken}`;
-  const cost = WDL_SUB_COSTS_V2.get(key);
-  const base = typeof cost === 'number' ? cost : 1;
-  return base * positionWeight(index);
-}
 
   async function processPrefix(prefix){
     if(!prefix || processedPrefixes.has(prefix)) return;
@@ -743,8 +736,6 @@ function substitutionCostV2(aToken, bToken, index){
       if(results.length >= SEARCH_MIN_PRIMARY) break;
     }
   }
-  return dp[m][n];
-}
 
   if(results.length < SEARCH_MIN_PRIMARY){
     const variantSet = expandAnlautVariants(primaryQuery);
@@ -780,6 +771,8 @@ function filterMatches(list, patterns, baseQuery){
   const baseLen = typeof baseQuery === 'string' ? baseQuery.length : 0;
   const threshold = baseLen <= 2 ? 1.2 : 1.6;
   const scored = [];
+  const useV2Distance = !window.LEGA_FLAGS?.SAFE_MODE && !!window.LEGA_FLAGS?.V2_SEARCH;
+
   for(const entry of list){
     const key = entryKey(entry);
     if(!key) continue;
@@ -802,20 +795,31 @@ function filterMatches(list, patterns, baseQuery){
       }
       if(bestLegacy === 0 && bestV2 === 0) break;
     }
-    if(bestLegacy === Infinity && bestV2 === Infinity) continue;
-    if(bestLegacy === Infinity || bestLegacy > threshold) continue;
-    if(bestV2 === Infinity || bestV2 > threshold) continue;
+    if(bestLegacy === Infinity) continue;
+    if(bestLegacy > threshold) continue;
+    if(useV2Distance){
+      if(bestV2 === Infinity || bestV2 > threshold) continue;
+    }
     entry._dlDist = bestLegacy;
     entry._dlScore = 1 / (1 + bestLegacy);
-    entry._dist = bestV2;
-    entry._wdl = wdlScoreV2(bestV2);
+    const effectiveV2 = Number.isFinite(bestV2) ? bestV2 : bestLegacy;
+    entry._dist = effectiveV2;
+    entry._wdl = wdlScoreV2(effectiveV2);
     entry._len = key.length;
     entry._lenDelta = key.length - baseLen;
     entry._freqHint = getEntryFrequency(entry);
     scored.push(entry);
   }
   if(!scored.length) return scored;
-  const ranked = rankV2(scored, baseQuery);
+  let ranked;
+  if (!window.LEGA_FLAGS?.SAFE_MODE && window.LEGA_FLAGS?.V2_RANK && typeof rankV2 === 'function') {
+    try {
+      ranked = rankV2(scored, baseQuery);
+    } catch (err) {
+      console.error('V2 rank failed -> fallback', err);
+      ranked = undefined;
+    }
+  }
   if(Array.isArray(ranked) && ranked.length){
     return ranked;
   }
@@ -1141,7 +1145,8 @@ function renderCard(entry, query){
   }
   const tags = tagLabels.map(t=>`<span class="tag">${highlightHeadV2(t, query)}</span>`).join(' ');
   const def = esc(entry.erklaerung || '');
-  const ex = (entry.beispiele||[]).map(x=>`<div class="example">„${esc(x)}“</div>`).join('');
+  const exampleText = quoteExampleV2(entry.beispiele && entry.beispiele[0]);
+  const ex = exampleText ? `<div class="example">${esc(exampleText)}</div>` : '';
 
   card.innerHTML = `
     <h2>${headMarkup}</h2>
@@ -1266,6 +1271,21 @@ function renderSilbenV2(def){
     return raw.map(part => String(part)).filter(Boolean).join('·');
   }
   return '';
+}
+
+function quoteExampleV2(s){
+  if(!s) return '';
+  let t = String(s).trim();
+  t = t.replace(/^["“”‚‘'«»]+/g, '').replace(/["“”‚‘'«»]+$/g, '');
+  t = t.replace(/\s+/g, ' ').trim();
+  t = t.replace(/([!?])\1+/g, '$1');
+  t = t.replace(/,{2,}/g, ',');
+  t = t.replace(/\.{3,}/g, '…');
+  t = t.replace(/\.{2}/g, '.');
+  if(!t){
+    return '';
+  }
+  return `„${t}“`;
 }
 
 function showSyllables(entry){
