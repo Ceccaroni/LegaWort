@@ -1,4 +1,4 @@
-/* Legasthenie-Wörterbuch – CH-DE
+/* Dyslexikon – CH-DE
    Keine externen Ressourcen, läuft auf GitHub Pages.
 */
 const state = {
