@@ -253,7 +253,6 @@ function clearSettingsPanelVars(){
   // Import/Export
   $('#btn-import').addEventListener('click', ()=> $('#file').click());
   $('#file').addEventListener('change', onImport);
-  $('#btn-export').addEventListener('click', onExport);
 
   // Benutzerdaten leeren
   const clearBtn = document.getElementById('btn-clear-user');
@@ -687,6 +686,8 @@ async function runSearch(input){
       if(results.length >= SEARCH_MIN_PRIMARY) break;
     }
   }
+  return dp[m][n];
+}
 
   if(results.length < SEARCH_MIN_PRIMARY){
     const variantSet = expandAnlautVariants(primaryQuery);
