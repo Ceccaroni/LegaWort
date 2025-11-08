@@ -44,7 +44,7 @@ function parseArgs() {
 }
 
 function normalizePrefix(prefix) {
-  const normalized = norm(prefix).slice(0, 2);
+  const normalized = normName(prefix).slice(0, 2);
   if (!normalized) throw new Error(`Invalid prefix: ${prefix}`);
   return normalized;
 }
@@ -59,10 +59,21 @@ function norm(value) {
     .replace(/ü/g, 'ue');
 }
 
-function sanitizeFilename(value) {
-  const normalized = norm(value)
+function normName(value) {
+  return norm(value)
     .replace(/[^a-z0-9_]/g, '_');
-  return normalized || '_';
+}
+
+function resolvePaths(word) {
+  const normalized = normName(word);
+  const fileBase = normalized || '_';
+  const prefix = (normalized.slice(0, 2) || '_');
+  return {
+    normalized,
+    fileBase,
+    prefix,
+    fileName: `${fileBase}.json`,
+  };
 }
 
 function pickSense(entry) {
@@ -144,7 +155,6 @@ async function processFile(opts) {
   const inPath = opts.in;
   if (!fs.existsSync(inPath)) throw new Error(`Input file not found: ${inPath}`);
   const outRoot = opts.out;
-  const prefixDir = path.join(outRoot, opts.prefix);
   const rl = readline.createInterface({
     input: fs.createReadStream(inPath, { encoding: 'utf8' }),
     crlfDelay: Infinity,
@@ -165,17 +175,16 @@ async function processFile(opts) {
       continue;
     }
     if (!entry?.word) continue;
-    const normWord = norm(entry.word);
-    if (!normWord.startsWith(opts.prefix)) continue;
-    if (opts.skipPrefixes.has(normWord.slice(0, 2))) {
+    const { fileName, prefix: entryPrefix } = resolvePaths(entry.word);
+    if (entryPrefix !== opts.prefix) continue;
+    if (opts.skipPrefixes.has(entryPrefix)) {
       skipped += 1;
-      console.info(`skip prefix ${normWord.slice(0, 2)} for ${entry.word}`);
+      console.info(`skip prefix ${entryPrefix} for ${entry.word}`);
       continue;
     }
 
     processed += 1;
-    const fileName = sanitizeFilename(entry.word) + '.json';
-    const targetDir = prefixDir;
+    const targetDir = path.join(outRoot, entryPrefix);
     const targetPath = path.join(targetDir, fileName);
 
     if (fs.existsSync(targetPath)) {
