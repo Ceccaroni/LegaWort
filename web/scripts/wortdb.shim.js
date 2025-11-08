@@ -33,7 +33,9 @@ async function fetchLocalDef(w){
   const url = defPath(w);
   const res = await fetch(url, { cache: "force-cache" });
   if (!res.ok) throw new Error(`404 ${url}`);
-  return await res.json();
+  const data = await res.json();
+  console.info("def local fetch", w, url);
+  return data;
 }
 
 const POS_MAP = {
@@ -126,6 +128,7 @@ async function fetchRemoteDef(w){
   const data = await res.json();
   const mapped = mapWiktextract(w, data);
   if (!mapped) throw new Error(`no remote def ${w}`);
+  console.info("def remote fetch", w, url);
   return mapped;
 }
 
@@ -142,14 +145,12 @@ window.WortDB.getDefinition = async function (wort) {
   const p = (async () => {
     try {
       const obj = await fetchLocalDef(wort);
-      console.info("def local fetch", wort);
       setCache(wort, obj);
       return obj;
     } catch {}
 
     try {
       const obj = await fetchRemoteDef(wort);
-      console.info("def remote fetch", wort);
       setCache(wort, obj);
       return obj;
     } catch {}
