@@ -1,0 +1,18 @@
+{
+  "wort": "Abakus",
+  "def_src": {
+    "pos": "noun",
+    "sense": "Rechenhilfe mit Kugeln"
+  },
+  "def_kid": null,
+  "beispiele": [
+    "Kinder lernen das Zählen mit dem Abakus."
+  ],
+  "tags": [
+    "Nomen"
+  ],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 1762616304277
+}
