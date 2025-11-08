@@ -345,42 +345,82 @@ function onSearch(e){
   _searchTimer = setTimeout(()=>doSearch(val), 120);
 }
 
-/* Zusatz-Heuristik für sehr kurze Eingaben (2–3 Zeichen)
-   – vergleicht gegen Wortanfang
-   – berücksichtigt Verwechslungsgruppen (b/d/p/q, g/k, ei/ie, Vokale)
-*/
-function confusableStarts(q){
-  if(!q) return null;
-  const groups = {
-    a: '[aäàáâeio]',
-    e: '[eèéêiy]',
-    i: '[iíìîye]',
-    o: '[oóòôu]',
-    u: '[uúùûo]',
-    b: '[bdpq]',
-    d: '[bdpq]',
-    p: '[bdpq]',
-    q: '[bdpq]',
-    g: '[gk]',
-    k: '[gk]',
-    s: '[sz]',
-    z: '[zs]'
-  };
-  const nq = q.toLowerCase().replace(/ß/g,'ss');
-  if(nq === 'ei' || nq === 'ie'){
-    return /^(ei|ie)/i;
-  }
-  let pattern = '^';
-  for(const ch of nq){
-    const cls = groups[ch] || ch.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-    pattern += cls;
-  }
-  return new RegExp(pattern, 'i');
+const SEARCH_MAX_RESULTS = 50;
+const SEARCH_POOL_LIMIT = SEARCH_MAX_RESULTS + 50;
+const SEARCH_MIN_PRIMARY = 5;
+const CONFUSION_RULES = [
+  ['g', 'k'],
+  ['d', 't'],
+  ['b', 'p'],
+  ['ei', 'ie'],
+  ['ae', 'e'],
+  ['ch', 'sch'],
+  ['k', 'ck'],
+  ['k', 'ch']
+];
+
+function matchKey(str){
+  if(!str) return '';
+  const base = String(str)
+    .toLowerCase()
+    .normalize('NFKC')
+    .replace(/ß/g, 'ss')
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue');
+  const stripped = base
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  return stripped.replace(/[^a-z]/g, '');
 }
 
-function prefixDistance(a, word){
-  const b = norm(word).slice(0, Math.max(3, a.length));
-  return distance(a, b);
+function entryKey(entry){
+  if(!entry) return '';
+  if(typeof entry._matchKey === 'string') return entry._matchKey;
+  const key = matchKey(entry.wort || entry.word || '');
+  entry._matchKey = key;
+  return key;
+}
+
+function expandAnlautVariants(query){
+  const q = matchKey(query);
+  if(!q) return new Set();
+  const variants = new Set([q]);
+  const limit = Math.max(state.chunkPrefixLen || 2, 2);
+  const queue = [q];
+
+  const enqueue = (candidate)=>{
+    if(!candidate) return;
+    if(candidate.length < 2) return; // nur sinnvolle Varianten
+    if(!variants.has(candidate)){
+      variants.add(candidate);
+      queue.push(candidate);
+    }
+  };
+
+  while(queue.length){
+    const current = queue.shift();
+    for(const [a, b] of CONFUSION_RULES){
+      const nextA = replaceAtStart(current, a, b, limit);
+      const nextB = replaceAtStart(current, b, a, limit);
+      nextA.forEach(enqueue);
+      nextB.forEach(enqueue);
+    }
+  }
+
+  return variants;
+}
+
+function replaceAtStart(str, from, to, limit){
+  const out = [];
+  if(!from || from === to) return out;
+  let idx = str.indexOf(from);
+  while(idx !== -1 && idx < limit){
+    const next = str.slice(0, idx) + to + str.slice(idx + from.length);
+    out.push(next);
+    idx = str.indexOf(from, idx + 1);
+  }
+  return out;
 }
 
 async function ensureChunk(prefix){
@@ -394,13 +434,18 @@ async function ensureChunk(prefix){
     if(!res.ok) throw new Error(res.status);
     const obj = await res.json();
     const list = Array.isArray(obj) ? obj.map(s=>({wort:String(s)})) : (obj.entries || obj || []);
-    const mapped = list.map(e => ({
-      wort: (e.wort||e.word||String(e)).replace(/ß/g,'ss').trim(),
-      silben: e.silben ? String(e.silben).split(/[-·\s]/).filter(Boolean) : [],
-      erklaerung: (e.erklaerung||e.definition||'').trim(),
-      beispiele: e.beispiele ? (Array.isArray(e.beispiele)?e.beispiele:String(e.beispiele).split(/\s*[|]\s*/).filter(Boolean)) : [],
-      tags: e.tags ? (Array.isArray(e.tags)?e.tags:String(e.tags).split(/\s*[,;]\s*/).filter(Boolean)) : []
-    })).filter(x=>x.wort);
+    const mapped = list.map(e => {
+      const wort = (e.wort||e.word||String(e)).replace(/ß/g,'ss').trim();
+      const entry = {
+        wort,
+        silben: e.silben ? String(e.silben).split(/[-·\s]/).filter(Boolean) : [],
+        erklaerung: (e.erklaerung||e.definition||'').trim(),
+        beispiele: e.beispiele ? (Array.isArray(e.beispiele)?e.beispiele:String(e.beispiele).split(/\s*[|]\s*/).filter(Boolean)) : [],
+        tags: e.tags ? (Array.isArray(e.tags)?e.tags:String(e.tags).split(/\s*[,;]\s*/).filter(Boolean)) : []
+      };
+      entry._matchKey = matchKey(entry.wort);
+      return entry;
+    }).filter(x=>x.wort);
     state.chunkCache.set(p, mapped);
     return mapped;
   }catch(err){
@@ -411,44 +456,112 @@ async function ensureChunk(prefix){
 }
 
 async function doSearch(input){
-  const q = norm(input);
-  if(q.length < 2){ render([]); return; }
-
-  // Basis + User
-  let pool = state.data.concat(state.userData);
-
-  // Grosse Daten: passenden Chunk nachladen
-  if(state.chunkIndex){
-    const pref = q.slice(0, state.chunkPrefixLen);
-    const chunk = await ensureChunk(pref);
-    pool = pool.concat(chunk);
+  const raw = typeof input === 'string' ? input : '';
+  const trimmed = raw.trim();
+  const q = matchKey(trimmed);
+  if(q.length < 2){
+    render([]);
+    return;
   }
 
-  // Direkte Treffer
-  const direct = pool.filter(it => norm(it.wort).includes(q));
+  const prefixLen = Math.max(1, state.chunkPrefixLen || 2);
+  const primaryPrefix = q.slice(0, prefixLen);
+  const processedPrefixes = new Set();
+  const prefixQueue = [];
+  if(primaryPrefix){ prefixQueue.push(primaryPrefix); }
 
-  // Kurz-Query-Heuristik (2–3 Zeichen): Wortanfang + Verwechslungsgruppen
-  let shortHits = [];
-  if(q.length <= 3){
-    const rx = confusableStarts(q);
-    if(rx){
-      shortHits = pool.filter(it => rx.test(norm(it.wort)));
+  const patterns = new Set([q]);
+  const variantsToConsider = [];
+  const seenKeys = new Map();
+  const candidates = [];
+
+  function addEntry(entry, replace=false, keyOverride){
+    const key = keyOverride || entryKey(entry);
+    if(!key) return false;
+    if(seenKeys.has(key)){
+      if(replace){
+        const idx = seenKeys.get(key);
+        candidates[idx] = entry;
+      }
+      return false;
     }
-    const nearPrefix = pool.filter(it => prefixDistance(q, it.wort) <= 2);
-    shortHits = shortHits.concat(nearPrefix);
+    seenKeys.set(key, candidates.length);
+    candidates.push(entry);
+    return true;
   }
 
-  // Fuzzy (allgemein, aber gedrosselt)
-  const fuzzy = pool
-    .map(it => ({ it, d: distance(q, norm(it.wort)) }))
-    .sort((a,b)=>a.d-b.d)
-    .filter(x => x.d > 0 && x.d <= Math.max(2, Math.floor(q.length/3)))
-    .slice(0, 24)
-    .map(x => x.it);
+  function addFromSource(list, prefix, replace){
+    if(!Array.isArray(list)) return false;
+    for(const entry of list){
+      const key = entryKey(entry);
+      if(!key || !prefix || !key.startsWith(prefix)) continue;
+      const added = addEntry(entry, replace, key);
+      if(added && candidates.length >= SEARCH_POOL_LIMIT) return true;
+    }
+    return false;
+  }
 
-  // Mischen, Dedup, Limit
-  const merged = [...new Set([...direct, ...shortHits, ...fuzzy])].slice(0, 24);
-  render(merged, q);
+  async function processPrefix(prefix){
+    if(!prefix || processedPrefixes.has(prefix)) return;
+    processedPrefixes.add(prefix);
+
+    if(addFromSource(state.userData, prefix, true)) return;
+
+    if(state.chunkIndex){
+      const chunkEntries = await ensureChunk(prefix);
+      for(const entry of chunkEntries){
+        const key = entryKey(entry);
+        if(!key.startsWith(prefix)) continue;
+        const added = addEntry(entry, false, key);
+        if(added && candidates.length >= SEARCH_POOL_LIMIT) return;
+      }
+    }
+
+    addFromSource(state.data, prefix, false);
+  }
+
+  while(prefixQueue.length){
+    const pref = prefixQueue.shift();
+    await processPrefix(pref);
+  }
+
+  let results = filterMatches(candidates, patterns).slice(0, SEARCH_MAX_RESULTS);
+
+  if(results.length < SEARCH_MIN_PRIMARY){
+    const variantSet = expandAnlautVariants(q);
+    for(const variant of variantSet){
+      if(variant.length < 2) continue;
+      if(!patterns.has(variant)){
+        patterns.add(variant);
+        variantsToConsider.push(variant);
+      }
+    }
+
+    for(const variant of variantsToConsider){
+      if(candidates.length >= SEARCH_POOL_LIMIT) break;
+      const pref = variant.slice(0, prefixLen);
+      if(!pref || processedPrefixes.has(pref)) continue;
+      prefixQueue.push(pref);
+      while(prefixQueue.length){
+        const nextPref = prefixQueue.shift();
+        await processPrefix(nextPref);
+      }
+      results = filterMatches(candidates, patterns).slice(0, SEARCH_MAX_RESULTS);
+      if(results.length >= SEARCH_MIN_PRIMARY) break;
+    }
+  }
+
+  render(results.slice(0, SEARCH_MAX_RESULTS), trimmed);
+}
+
+function filterMatches(list, patterns){
+  const patternList = Array.from(patterns).filter(p => typeof p === 'string' && p.length >= 2);
+  if(!patternList.length) return [];
+  return list.filter(entry => {
+    const key = entryKey(entry);
+    if(!key) return false;
+    return patternList.some(p => key.startsWith(p));
+  });
 }
 
 /* Normalisierung */
@@ -459,28 +572,6 @@ function norm(s){
     .replace(/ß/g, 'ss')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue');
-}
-
-/* Damerau–Levenshtein (einfach) */
-function distance(a,b){
-  const al=a.length, bl=b.length;
-  const dp = Array.from({length: al+1}, ()=>Array(bl+1).fill(0));
-  for(let i=0;i<=al;i++) dp[i][0]=i;
-  for(let j=0;j<=bl;j++) dp[0][j]=j;
-  for(let i=1;i<=al;i++){
-    for(let j=1;j<=bl;j++){
-      const cost = a[i-1]===b[j-1] ? 0 : 1;
-      dp[i][j] = Math.min(
-        dp[i-1][j] + 1,
-        dp[i][j-1] + 1,
-        dp[i-1][j-1] + cost
-      );
-      if(i>1 && j>1 && a[i-1]===b[j-2] && a[i-2]===b[j-1]){
-        dp[i][j] = Math.min(dp[i][j], dp[i-2][j-2] + 1);
-      }
-    }
-  }
-  return dp[al][bl];
 }
 
 /* Rendering */
