@@ -1,6 +1,8 @@
 {
   "prefixLen": 2,
   "prefixes": {
-    "aa": "aa.json"
+    "aa": "aa.json",
+    "ab": "ab.json",
+    "ac": "ac.json"
   }
 }
