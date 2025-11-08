@@ -390,6 +390,21 @@ function matchKey(str){
   return stripped.replace(/[^a-z]/g, '');
 }
 
+function normalizeV2(str){
+  if(!str) return '';
+  const base = String(str)
+    .toLowerCase()
+    .normalize('NFKC')
+    .replace(/ß/g, 'ss')
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue');
+  const stripped = base
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  return stripped.replace(/[^a-z]/g, '');
+}
+
 function entryKey(entry){
   if(!entry) return '';
   if(typeof entry._matchKey === 'string') return entry._matchKey;
@@ -425,6 +440,62 @@ function expandAnlautVariants(query){
   }
 
   return variants;
+}
+
+function collectBucketsV2(queryNorm, options){
+  const q = typeof queryNorm === 'string' ? queryNorm : '';
+  if(!q) return { basePrefix: '', fallbackPrefixes: [] };
+  const prefixLen = Math.max(1, state.chunkPrefixLen || 2);
+  const minLength = Math.min(2, prefixLen);
+  const limit = Math.max(5, options?.maxFallback || 50);
+  const basePrefix = q.slice(0, prefixLen);
+  const seen = new Set();
+  if(basePrefix) seen.add(basePrefix);
+  const fallback = [];
+
+  const push = (pref)=>{
+    if(!pref) return;
+    if(pref.length < minLength) return;
+    if(seen.has(pref)) return;
+    seen.add(pref);
+    if(fallback.length >= limit) return;
+    fallback.push(pref);
+  };
+
+  const confusionPairs = [
+    ['g', 'k'],
+    ['k', 'g'],
+    ['d', 't'],
+    ['t', 'd'],
+    ['b', 'p'],
+    ['p', 'b'],
+    ['ch', 'k'],
+    ['ch', 'ck'],
+    ['k', 'ch'],
+    ['ck', 'k'],
+    ['sch', 'ch'],
+    ['ch', 'sch'],
+    ['ae', 'e'],
+    ['e', 'ae'],
+    ['ei', 'ie'],
+    ['ie', 'ei']
+  ];
+
+  for(const [from, to] of confusionPairs){
+    if(fallback.length >= limit) break;
+    if(!from || !to) continue;
+    let idx = q.indexOf(from);
+    while(idx !== -1 && idx < prefixLen){
+      const replaced = `${q.slice(0, idx)}${to}${q.slice(idx + from.length)}`;
+      const pref = replaced.slice(0, prefixLen);
+      push(pref);
+      if(fallback.length >= limit) break;
+      idx = q.indexOf(from, idx + 1);
+    }
+    if(fallback.length >= limit) break;
+  }
+
+  return { basePrefix, fallbackPrefixes: fallback };
 }
 
 function replaceAtStart(str, from, to, limit){
@@ -475,18 +546,23 @@ async function doSearch(input){
   const raw = typeof input === 'string' ? input : '';
   const trimmed = raw.trim();
   const q = matchKey(trimmed);
-  if(q.length < 2){
+  const qNormV2 = normalizeV2(trimmed);
+  const primaryQuery = qNormV2 || q;
+  if(primaryQuery.length < 2){
     render([]);
     return;
   }
 
   const prefixLen = Math.max(1, state.chunkPrefixLen || 2);
-  const primaryPrefix = q.slice(0, prefixLen);
+  const bucketInfoV2 = collectBucketsV2(primaryQuery);
+  const primaryPrefix = bucketInfoV2.basePrefix || primaryQuery.slice(0, prefixLen);
+  const fallbackPrefixesV2 = bucketInfoV2.fallbackPrefixes || [];
   const processedPrefixes = new Set();
   const prefixQueue = [];
   if(primaryPrefix){ prefixQueue.push(primaryPrefix); }
 
-  const patterns = new Set([q]);
+  const patterns = new Set([primaryQuery]);
+  if(q && q !== primaryQuery){ patterns.add(q); }
   const variantsToConsider = [];
   const seenKeys = new Map();
   const candidates = [];
@@ -541,10 +617,25 @@ async function doSearch(input){
     await processPrefix(pref);
   }
 
-  let results = filterMatches(candidates, patterns, q).slice(0, SEARCH_MAX_RESULTS);
+  let results = filterMatches(candidates, patterns, primaryQuery).slice(0, SEARCH_MAX_RESULTS);
+
+  if(results.length < SEARCH_MIN_PRIMARY && fallbackPrefixesV2.length){
+    for(const pref of fallbackPrefixesV2){
+      if(candidates.length >= SEARCH_POOL_LIMIT) break;
+      if(!pref || processedPrefixes.has(pref)) continue;
+      prefixQueue.push(pref);
+      while(prefixQueue.length){
+        const nextPref = prefixQueue.shift();
+        await processPrefix(nextPref);
+        if(candidates.length >= SEARCH_POOL_LIMIT) break;
+      }
+      results = filterMatches(candidates, patterns, primaryQuery).slice(0, SEARCH_MAX_RESULTS);
+      if(results.length >= SEARCH_MIN_PRIMARY) break;
+    }
+  }
 
   if(results.length < SEARCH_MIN_PRIMARY){
-    const variantSet = expandAnlautVariants(q);
+    const variantSet = expandAnlautVariants(primaryQuery);
     for(const variant of variantSet){
       if(variant.length < 2) continue;
       if(!patterns.has(variant)){
@@ -562,7 +653,7 @@ async function doSearch(input){
         const nextPref = prefixQueue.shift();
         await processPrefix(nextPref);
       }
-      results = filterMatches(candidates, patterns, q).slice(0, SEARCH_MAX_RESULTS);
+      results = filterMatches(candidates, patterns, primaryQuery).slice(0, SEARCH_MAX_RESULTS);
       if(results.length >= SEARCH_MIN_PRIMARY) break;
     }
   }
