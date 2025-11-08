@@ -1,0 +1,11 @@
+{
+  "wort": "Aachen",
+  "def_src": { "pos": "Eigenname", "sense": "Stadt in Deutschland" },
+  "def_kid": null,
+  "beispiele": ["\u201eWir fahren nach Aachen.\u201c"],
+  "tags": ["Nomen"],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 0
+}
