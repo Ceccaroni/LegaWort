@@ -651,6 +651,19 @@ async function doSearch(input){
       if(results.length >= SEARCH_MIN_PRIMARY) break;
     }
   }
+  if(!scored.length) return scored;
+  const ranked = rankV2(scored, baseQuery);
+  if(Array.isArray(ranked) && ranked.length){
+    return ranked;
+  }
+  scored.sort((a, b)=>{
+    const da = typeof a._dlDist === 'number' ? a._dlDist : Infinity;
+    const db = typeof b._dlDist === 'number' ? b._dlDist : Infinity;
+    if(da !== db) return da - db;
+    return String(a.wort || '').localeCompare(String(b.wort || ''), 'de');
+  });
+  return scored;
+}
 
   if(results.length < SEARCH_MIN_PRIMARY){
     const variantSet = expandAnlautVariants(primaryQuery);
@@ -979,6 +992,15 @@ function norm(s){
 }
 
 /* Rendering */
+function displayHeadwordV2(wort, pos){
+  if(!wort) return '';
+  const raw = String(wort);
+  if(pos === 'Nomen' || pos === 'Eigenname'){
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+  }
+  return raw.toLowerCase();
+}
+
 function render(list, query=''){
   const items = Array.isArray(list) ? list.slice() : [];
   state.lastResults = items;
@@ -999,7 +1021,9 @@ function renderCard(entry, query){
   const card = document.createElement('article');
   card.className = 'card';
   card.tabIndex = 0;
-  const w = esc(entry.wort);
+  const headwordPos = (entry.def_src && entry.def_src.pos) || (Array.isArray(entry.tags) && entry.tags.length ? entry.tags[0] : '');
+  const headword = displayHeadwordV2(entry.wort, headwordPos);
+  const w = esc(headword);
   const s = state.showSyll ? ' · ' + esc(showSyllables(entry)) : '';
   const tags = (entry.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join(' ');
   const def = esc(entry.erklaerung || '');
