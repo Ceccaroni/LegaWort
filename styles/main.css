@@ -373,18 +373,6 @@ body.contrast .switch span{ color: var(--ink); }
   .settings-panel .toggles .switch{ flex:1 1 100%; }
 }
 
-@media (max-width: 720px){
-  .settings-panel{
-    left: var(--settings-panel-left, var(--panel-edge-gap));
-    right: var(--settings-panel-right, var(--panel-edge-gap));
-    width:auto;
-    max-width:none;
-    border-radius:18px;
-  }
-  .settings-panel::before{ opacity:0; }
-  .settings-panel .toggles .switch{ flex:1 1 100%; }
-}
-
 /* Results Grid */
 .results{
   padding: 18px clamp(12px,2vw,24px) 40px;
