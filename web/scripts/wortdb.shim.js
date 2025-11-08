@@ -34,6 +34,7 @@ async function fetchLocalDef(w){
   const res = await fetch(url, { cache: "force-cache" });
   if (!res.ok) throw new Error(`404 ${url}`);
   const data = await res.json();
+  normalizeSilbenField(data);
   console.info("def local fetch", w, url);
   return data;
 }
@@ -93,6 +94,56 @@ function dedupe(arr){
   return Array.from(new Set(arr.filter(Boolean)));
 }
 
+function splitSyllableText(text){
+  return String(text)
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&[a-z]+;/gi, " ")
+    .split(/[\u00B7\u2022·•\-\s]+/)
+    .map(part => part.trim())
+    .filter(Boolean);
+}
+
+function normalizeSilbenField(obj){
+  if(!obj || !Object.prototype.hasOwnProperty.call(obj, "silben")) return;
+  const raw = obj.silben;
+  let parts = [];
+  if(Array.isArray(raw)){
+    parts = raw.map(part => String(part).trim()).filter(Boolean);
+  }else if(typeof raw === "string"){
+    parts = splitSyllableText(raw);
+  }
+  if(parts.length){
+    obj.silben = parts;
+  }else{
+    delete obj.silben;
+  }
+}
+
+function extractSyllables(entry, sense){
+  const candidates = [];
+  const addParts = (parts) => {
+    if(!parts) return;
+    const arr = Array.isArray(parts) ? parts : splitSyllableText(parts);
+    const cleaned = arr.map(part => String(part).trim()).filter(Boolean);
+    if(cleaned.length) candidates.push(cleaned);
+  };
+  const scan = (obj) => {
+    if(!obj) return;
+    if(Array.isArray(obj.syllables)) addParts(obj.syllables);
+    if(typeof obj.syllables === "string") addParts(obj.syllables);
+    if(Array.isArray(obj.hyphenation)) addParts(obj.hyphenation);
+    if(typeof obj.hyphenation === "string") addParts(obj.hyphenation);
+    if(typeof obj.hyphenation_html === "string") addParts(obj.hyphenation_html);
+  };
+  scan(entry);
+  if(entry && Array.isArray(entry.pronunciations)){
+    entry.pronunciations.forEach(scan);
+  }
+  if(sense) scan(sense);
+  const found = candidates.find(arr => arr.length);
+  return found ? found : [];
+}
+
 function mapWiktextract(wort, raw){
   const entries = Array.isArray(raw) ? raw : raw ? [raw] : [];
   if (!entries.length) return null;
@@ -109,7 +160,8 @@ function mapWiktextract(wort, raw){
     ...((sense && Array.isArray(sense.tags)) ? sense.tags.map(formatTag) : [])
   ]);
   const examples = collectExamples(entry, sense);
-  return {
+  const syllables = extractSyllables(entry, sense);
+  const mapped = {
     wort: entry.word || wort,
     def_src: gloss ? { pos: pos || null, sense: gloss } : (pos ? { pos, sense: "" } : null),
     def_kid: null,
@@ -119,6 +171,8 @@ function mapWiktextract(wort, raw){
     via: "wiktextract",
     license: "CC-BY-SA 4.0"
   };
+  if(syllables.length) mapped.silben = syllables;
+  return mapped;
 }
 
 async function fetchRemoteDef(w){
@@ -128,6 +182,7 @@ async function fetchRemoteDef(w){
   const data = await res.json();
   const mapped = mapWiktextract(w, data);
   if (!mapped) throw new Error(`no remote def ${w}`);
+  normalizeSilbenField(mapped);
   console.info("def remote fetch", w, url);
   return mapped;
 }

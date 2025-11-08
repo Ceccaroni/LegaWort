@@ -3,6 +3,7 @@
   "def_src": { "pos": "Eigenname", "sense": "Stadt in Deutschland" },
   "def_kid": null,
   "beispiele": ["\u201eWir fahren nach Aachen.\u201c"],
+  "silben": ["A", "a", "chen"],
   "tags": ["Nomen"],
   "source": "wiktionary",
   "via": "wiktextract",

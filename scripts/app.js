@@ -610,6 +610,14 @@ async function doSearch(input){
     }
     return false;
   }
+  scored.sort((a, b)=>{
+    const da = typeof a._dlDist === 'number' ? a._dlDist : Infinity;
+    const db = typeof b._dlDist === 'number' ? b._dlDist : Infinity;
+    if(da !== db) return da - db;
+    return String(a.wort || '').localeCompare(String(b.wort || ''), 'de');
+  });
+  return scored;
+}
 
   async function processPrefix(prefix){
     if(!prefix || processedPrefixes.has(prefix)) return;
@@ -629,13 +637,13 @@ async function doSearch(input){
 
     addFromSource(state.data, prefix, false);
   }
-  return dp[m][n];
-}
 
   while(prefixQueue.length){
     const pref = prefixQueue.shift();
     await processPrefix(pref);
   }
+  return out;
+}
 
   let results = filterMatches(candidates, patterns, primaryQuery).slice(0, SEARCH_MAX_RESULTS);
 
@@ -1032,7 +1040,8 @@ function renderCard(entry, query){
   const headword = displayHeadwordV2(entry.wort, headwordPosRaw);
   const primaryTag = posLabelV2(headwordPosRaw);
   const w = esc(headword);
-  const s = state.showSyll ? ' · ' + esc(showSyllables(entry)) : '';
+  const syllableText = state.showSyll ? (renderSilbenV2(entry) || showSyllables(entry)) : '';
+  const s = syllableText ? ' · ' + esc(syllableText) : '';
   const tagLabels = [];
   if(primaryTag){
     tagLabels.push(primaryTag);
@@ -1113,6 +1122,9 @@ function hydrateDefinitionForCard(card, entry, query){
       const merged = new Set([...(entry.tags || []), ...def.tags]);
       entry.tags = Array.from(merged);
     }
+    if(Array.isArray(def.silben) && def.silben.length){
+      entry.silben = def.silben.map(part => String(part)).filter(Boolean);
+    }
     if(!card.isConnected) return;
     if(card.dataset.word !== entry.wort) return;
     const fresh = renderCard(entry, query);
@@ -1133,6 +1145,15 @@ function highlight(text, q){
 }
 
 function esc(s){ return (s||'').replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
+
+function renderSilbenV2(def){
+  if(!def) return '';
+  const raw = def.silben;
+  if(Array.isArray(raw) && raw.length){
+    return raw.map(part => String(part)).filter(Boolean).join('·');
+  }
+  return '';
+}
 
 function showSyllables(entry){
   if(entry.silben && entry.silben.length) return entry.silben.join('·');
