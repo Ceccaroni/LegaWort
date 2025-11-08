@@ -245,7 +245,6 @@ function clearSettingsPanelVars(){
   // Import/Export
   $('#btn-import').addEventListener('click', ()=> $('#file').click());
   $('#file').addEventListener('change', onImport);
-  $('#btn-export').addEventListener('click', onExport);
 
   // Benutzerdaten leeren
   const clearBtn = document.getElementById('btn-clear-user');
