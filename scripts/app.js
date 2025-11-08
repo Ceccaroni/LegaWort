@@ -245,7 +245,6 @@ function clearSettingsPanelVars(){
   // Import/Export
   $('#btn-import').addEventListener('click', ()=> $('#file').click());
   $('#file').addEventListener('change', onImport);
-  $('#btn-export').addEventListener('click', onExport);
 
   // Benutzerdaten leeren
   const clearBtn = document.getElementById('btn-clear-user');
@@ -676,6 +675,8 @@ async function doSearch(input){
       if(results.length >= SEARCH_MIN_PRIMARY) break;
     }
   }
+  return out;
+}
 
   render(results.slice(0, SEARCH_MAX_RESULTS), trimmed);
 }
