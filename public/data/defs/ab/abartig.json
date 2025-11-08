@@ -1,0 +1,18 @@
+{
+  "wort": "Abartig",
+  "def_src": {
+    "pos": "adj",
+    "sense": "von der Norm abweichend"
+  },
+  "def_kid": null,
+  "beispiele": [
+    "Das ist eine abartige Vorstellung."
+  ],
+  "tags": [
+    "Adjektiv"
+  ],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 1762616304284
+}
