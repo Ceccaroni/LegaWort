@@ -1,4 +1,4 @@
-# Legasthenie-Wörterbuch (CH-DE)
+# Dyslexikon (CH-DE)
 
 Statisch, offline-fähig, ohne externe Ressourcen. Für GitHub Pages gedacht. Schweizer Orthografie (ss statt ß).
 
