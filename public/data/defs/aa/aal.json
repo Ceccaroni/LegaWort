@@ -1,0 +1,11 @@
+{
+  "wort": "Aal",
+  "def_src": { "pos": "Substantiv", "sense": "Langgestreckter Knochenfisch aus der Familie der Flussaale" },
+  "def_kid": null,
+  "beispiele": ["\u201eDer Fischer fing einen Aal.\u201c"],
+  "tags": ["Nomen"],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 0
+}
