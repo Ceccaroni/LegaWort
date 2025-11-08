@@ -348,6 +348,22 @@ function onSearch(e){
 const SEARCH_MAX_RESULTS = 50;
 const SEARCH_POOL_LIMIT = SEARCH_MAX_RESULTS + 50;
 const SEARCH_MIN_PRIMARY = 5;
+const SUBSTITUTION_COSTS = new Map([
+  ['b|p', 0.4],
+  ['d|t', 0.4],
+  ['g|k', 0.5],
+  ['k|ck', 0.5],
+  ['k|ch', 0.5],
+  ['sch|ch', 0.6],
+  ['ei|ie', 0.6],
+  ['ä|e', 0.5],
+  ['e|r', 0.3],
+  ['t|z', 0.3]
+]);
+const TRANSPOSE_SPECIAL_COSTS = new Map([
+  ['e|i', 0.6],
+  ['i|e', 0.6]
+]);
 const CONFUSION_RULES = [
   ['g', 'k'],
   ['d', 't'],
@@ -525,7 +541,7 @@ async function doSearch(input){
     await processPrefix(pref);
   }
 
-  let results = filterMatches(candidates, patterns).slice(0, SEARCH_MAX_RESULTS);
+  let results = filterMatches(candidates, patterns, q).slice(0, SEARCH_MAX_RESULTS);
 
   if(results.length < SEARCH_MIN_PRIMARY){
     const variantSet = expandAnlautVariants(q);
@@ -546,7 +562,7 @@ async function doSearch(input){
         const nextPref = prefixQueue.shift();
         await processPrefix(nextPref);
       }
-      results = filterMatches(candidates, patterns).slice(0, SEARCH_MAX_RESULTS);
+      results = filterMatches(candidates, patterns, q).slice(0, SEARCH_MAX_RESULTS);
       if(results.length >= SEARCH_MIN_PRIMARY) break;
     }
   }
@@ -554,14 +570,137 @@ async function doSearch(input){
   render(results.slice(0, SEARCH_MAX_RESULTS), trimmed);
 }
 
-function filterMatches(list, patterns){
+function filterMatches(list, patterns, baseQuery){
   const patternList = Array.from(patterns).filter(p => typeof p === 'string' && p.length >= 2);
   if(!patternList.length) return [];
-  return list.filter(entry => {
+  const patternTokens = patternList.map(p => ({ key: p, tokens: tokenizeKey(p) }));
+  const baseLen = typeof baseQuery === 'string' ? baseQuery.length : 0;
+  const threshold = baseLen <= 2 ? 1.2 : 1.6;
+  const scored = [];
+  for(const entry of list){
     const key = entryKey(entry);
-    if(!key) return false;
-    return patternList.some(p => key.startsWith(p));
+    if(!key) continue;
+    const entryTokens = tokenizeKey(key);
+    let best = Infinity;
+    for(const pattern of patternTokens){
+      if(key.startsWith(pattern.key)){
+        best = 0;
+        break;
+      }
+      const { distance } = weightedDamerauLevenshtein(pattern.tokens, entryTokens);
+      if(distance < best){
+        best = distance;
+      }
+      if(best === 0) break;
+    }
+    if(best === Infinity) continue;
+    if(best > threshold) continue;
+    entry._dlDist = best;
+    entry._dlScore = 1 / (1 + best);
+    scored.push(entry);
+  }
+  scored.sort((a, b)=>{
+    const da = typeof a._dlDist === 'number' ? a._dlDist : Infinity;
+    const db = typeof b._dlDist === 'number' ? b._dlDist : Infinity;
+    if(da !== db) return da - db;
+    return String(a.wort || '').localeCompare(String(b.wort || ''), 'de');
   });
+  return scored;
+}
+
+function tokenizeKey(key){
+  const out = [];
+  if(!key) return out;
+  const str = String(key);
+  const patterns = [
+    ['sch', 'sch'],
+    ['ch', 'ch'],
+    ['ck', 'ck'],
+    ['ss', 'ß'],
+    ['ei', 'ei'],
+    ['ie', 'ie'],
+    ['ae', 'ä']
+  ];
+  for(let i = 0; i < str.length;){
+    let matched = false;
+    for(const [pat, token] of patterns){
+      if(str.startsWith(pat, i)){
+        out.push(token);
+        i += pat.length;
+        matched = true;
+        break;
+      }
+    }
+    if(matched) continue;
+    out.push(str[i]);
+    i += 1;
+  }
+  return out;
+}
+
+function positionWeight(index){
+  return index <= 2 ? 2 : 1;
+}
+
+function insertionCost(index){
+  return positionWeight(index);
+}
+
+function deletionCost(index){
+  return positionWeight(index);
+}
+
+function substitutionCost(aToken, bToken, index){
+  if(aToken === bToken) return 0;
+  const key = `${aToken}|${bToken}`;
+  const reverse = `${bToken}|${aToken}`;
+  const base = SUBSTITUTION_COSTS.get(key) ?? SUBSTITUTION_COSTS.get(reverse) ?? 1;
+  return base * positionWeight(index);
+}
+
+function transpositionCost(aTokens, i){
+  const idx1 = i - 2;
+  const idx2 = i - 1;
+  if(idx1 < 0 || idx2 < 0) return 1;
+  if(idx1 <= 1 && idx2 <= 1) return 0.5;
+  const pairKey = `${aTokens[idx1]}|${aTokens[idx2]}`;
+  const special = TRANSPOSE_SPECIAL_COSTS.get(pairKey);
+  if(typeof special === 'number'){
+    return Math.min((positionWeight(idx1) + positionWeight(idx2)) / 2, special * Math.max(positionWeight(idx1), positionWeight(idx2)));
+  }
+  return (positionWeight(idx1) + positionWeight(idx2)) / 2;
+}
+
+function weightedDamerauLevenshtein(aTokens, bTokens){
+  const a = Array.isArray(aTokens) ? aTokens : [];
+  const b = Array.isArray(bTokens) ? bTokens : [];
+  const m = a.length;
+  const n = b.length;
+  if(m === 0 && n === 0){
+    return { distance: 0, score: 1 };
+  }
+  const dp = Array.from({ length: m + 1 }, ()=>Array(n + 1).fill(0));
+  for(let i = 1; i <= m; i++){
+    dp[i][0] = dp[i - 1][0] + deletionCost(i - 1);
+  }
+  for(let j = 1; j <= n; j++){
+    dp[0][j] = dp[0][j - 1] + insertionCost(j - 1);
+  }
+  for(let i = 1; i <= m; i++){
+    for(let j = 1; j <= n; j++){
+      const del = dp[i - 1][j] + deletionCost(i - 1);
+      const ins = dp[i][j - 1] + insertionCost(j - 1);
+      const sub = dp[i - 1][j - 1] + substitutionCost(a[i - 1], b[j - 1], Math.min(i - 1, j - 1));
+      let val = Math.min(del, ins, sub);
+      if(i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]){
+        const tCost = transpositionCost(a, i);
+        val = Math.min(val, dp[i - 2][j - 2] + tCost);
+      }
+      dp[i][j] = val;
+    }
+  }
+  const distance = dp[m][n];
+  return { distance, score: 1 / (1 + distance) };
 }
 
 /* Normalisierung */
