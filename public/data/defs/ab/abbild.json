@@ -1,0 +1,11 @@
+{
+  "wort": "Abbild",
+  "def_src": { "pos": "Nomen", "sense": "bildliche Darstellung einer Sache" },
+  "def_kid": null,
+  "beispiele": ["\u201eDas Gem\u00e4lde ist ein getreues Abbild der Landschaft.\u201c"],
+  "tags": ["Nomen"],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 0
+}

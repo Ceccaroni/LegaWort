@@ -1,0 +1,11 @@
+{
+  "wort": "Abbau",
+  "def_src": { "pos": "Nomen", "sense": "das Reduzieren oder Abbauen von etwas" },
+  "def_kid": null,
+  "beispiele": ["\u201eDer Abbau der Schulden schreitet voran.\u201c"],
+  "tags": ["Nomen"],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 0
+}

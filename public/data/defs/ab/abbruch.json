@@ -1,0 +1,11 @@
+{
+  "wort": "Abbruch",
+  "def_src": { "pos": "Nomen", "sense": "das Beenden oder Abrei\u00dfen von etwas" },
+  "def_kid": null,
+  "beispiele": ["\u201eDer Abbruch des alten Hauses beginnt morgen.\u201c"],
+  "tags": ["Nomen"],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 0
+}

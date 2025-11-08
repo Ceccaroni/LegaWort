@@ -1,4 +1,4 @@
-/* Legasthenie-Wörterbuch – CH-DE
+/* Dyslexikon – CH-DE
    Keine externen Ressourcen, läuft auf GitHub Pages.
 */
 const state = {
@@ -11,6 +11,8 @@ const state = {
   ruler: false,
   ls: 3,
   lh: 18,
+  lastResults: [],
+  lastQuery: '',
   learnWords: [],
   // Grossdatensatz via Prefix-Chunks (optional)
   chunkIndex: null,        // { prefixLen: 2, prefixes: { "aa": "aa.json", ... } }
@@ -21,6 +23,20 @@ const state = {
 const $ = sel => document.querySelector(sel);
 const resultsEl = $('#results');
 const rulerEl = $('#ruler');
+const SETTINGS_PANEL_VARS = [
+  '--settings-panel-top',
+  '--settings-panel-left',
+  '--settings-panel-right',
+  '--settings-panel-gap',
+  '--settings-panel-caret-right',
+  '--settings-panel-caret-opacity'
+];
+
+function clearSettingsPanelVars(){
+  const rootStyle = document.documentElement?.style;
+  if(!rootStyle) return;
+  SETTINGS_PANEL_VARS.forEach(prop => rootStyle.removeProperty(prop));
+}
 
 (async function init(){
   // Basisdaten (optional)
@@ -62,20 +78,150 @@ const rulerEl = $('#ruler');
   hydrateLearn();
 
   // UI
-  $('#q').addEventListener('input', onSearch);
-  $('#toggle-dys').addEventListener('change', (e)=>{
-  state.dys = e.target.checked;
-  document.body.classList.toggle('dys', state.dys);
-  doSearch($('#q').value);   // statt render();
-  saveSettings();
-});
+  const settingsToggle = $('#btn-settings');
+  const settingsPanel = $('#settings-panel');
+  const settingsWrapper = settingsToggle ? settingsToggle.closest('.settings-wrapper') : null;
 
-  $('#toggle-dys').addEventListener('change', (e)=>{ state.dys = e.target.checked; document.body.classList.toggle('dys', state.dys); saveSettings(); });
+  const rootStyle = document.documentElement.style;
+  const updateSettingsPanelMetrics = ()=>{
+    if(!settingsPanel || !settingsToggle) return;
+    if(settingsPanel.hidden || settingsPanel.hasAttribute('hidden')) return;
+    const toggleRect = settingsToggle.getBoundingClientRect();
+    const gap = Math.max(12, Math.min(window.innerWidth * 0.05, 24));
+    const top = Math.max(gap, toggleRect.bottom + gap);
+    rootStyle.setProperty('--settings-panel-gap', `${gap}px`);
+    rootStyle.setProperty('--settings-panel-top', `${top}px`);
+
+    if(window.innerWidth <= 640){
+      rootStyle.setProperty('--settings-panel-left', `${gap}px`);
+      rootStyle.setProperty('--settings-panel-right', `${gap}px`);
+      rootStyle.setProperty('--settings-panel-caret-opacity', '0');
+      rootStyle.removeProperty('--settings-panel-caret-right');
+      return;
+    }
+
+    const panelWidth = Math.min(420, window.innerWidth - gap * 2);
+    let right = Math.max(gap, window.innerWidth - toggleRect.right);
+    if(window.innerWidth - right - panelWidth < gap){
+      right = Math.max(gap, window.innerWidth - panelWidth - gap);
+    }
+    const left = Math.max(gap, window.innerWidth - right - panelWidth);
+    rootStyle.setProperty('--settings-panel-left', `${left}px`);
+    rootStyle.setProperty('--settings-panel-right', `${right}px`);
+    rootStyle.setProperty('--settings-panel-caret-opacity', '1');
+
+    requestAnimationFrame(()=>{
+      if(!settingsPanel || settingsPanel.hidden || settingsPanel.hasAttribute('hidden')) return;
+      const panelRect = settingsPanel.getBoundingClientRect();
+      const buttonCenter = toggleRect.left + (toggleRect.width / 2);
+      const caretRight = Math.min(
+        Math.max(18, panelRect.right - buttonCenter - 8),
+        panelRect.width - 24
+      );
+      rootStyle.setProperty('--settings-panel-caret-right', `${caretRight}px`);
+    });
+  };
+
+  const setSettingsOpen = (open)=>{
+    if(!settingsPanel || !settingsToggle) return;
+    if(open){
+      settingsPanel.hidden = false;
+      settingsPanel.removeAttribute('hidden');
+      settingsPanel.style.display = 'flex';
+      settingsToggle.setAttribute('aria-expanded', 'true');
+      if(settingsWrapper){
+        settingsWrapper.classList.add('open');
+      }
+      updateSettingsPanelMetrics();
+      if(document.activeElement === settingsToggle){
+        const focusTarget = settingsPanel.querySelector('input, button, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if(focusTarget){
+          focusTarget.focus({ preventScroll: true });
+        }
+      }
+    }else{
+      settingsPanel.hidden = true;
+      settingsPanel.setAttribute('hidden', '');
+      settingsPanel.style.display = 'none';
+      settingsToggle.setAttribute('aria-expanded', 'false');
+      if(settingsWrapper){
+        settingsWrapper.classList.remove('open');
+      }
+      clearSettingsPanelVars();
+    }
+  };
+
+  const closeSettings = ()=> setSettingsOpen(false);
+
+  setSettingsOpen(false);
+
+  if(settingsToggle && settingsPanel){
+    settingsToggle.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const expanded = settingsToggle.getAttribute('aria-expanded') === 'true';
+      setSettingsOpen(!expanded);
+    });
+
+    settingsPanel.addEventListener('click', (e)=> e.stopPropagation());
+
+    document.addEventListener('click', ()=>{
+      closeSettings();
+    });
+
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === 'Escape'){
+        if(settingsPanel && !settingsPanel.hidden){
+          closeSettings();
+          settingsToggle.focus();
+        }
+      }
+    });
+
+    window.addEventListener('resize', updateSettingsPanelMetrics);
+    window.addEventListener('scroll', updateSettingsPanelMetrics, { passive: true });
+  }
+
+  $('#q').addEventListener('input', onSearch);
+  $('#toggle-syll').addEventListener('change', (e)=>{
+    state.showSyll = e.target.checked;
+    render(state.lastResults, state.lastQuery);
+    saveSettings();
+  });
+  $('#toggle-dys').addEventListener('change', (e)=>{
+    state.dys = e.target.checked;
+    document.body.classList.toggle('dys', state.dys);
+    render(state.lastResults, state.lastQuery);
+    saveSettings();
+  });
   $('#toggle-contrast').addEventListener('change', (e)=>{ state.contrast = e.target.checked; document.body.classList.toggle('contrast', state.contrast); saveSettings(); });
+
+  let lastPointerY = null;
+  const getRulerHeight = ()=>{
+    if(!rulerEl) return 36;
+    const h = rulerEl.offsetHeight;
+    if(h) return h;
+    const parsed = parseFloat(getComputedStyle(rulerEl).height);
+    return Number.isFinite(parsed) ? parsed : 36;
+  };
+  const applyRulerPosition = (y)=>{
+    if(typeof y !== 'number' || !rulerEl) return;
+    const h = getRulerHeight();
+    const maxTop = Math.max(0, window.innerHeight - h);
+    const clamped = Math.min(maxTop, Math.max(0, y - h/2));
+    rulerEl.style.top = clamped + 'px';
+  };
+  const rememberPointerY = (y)=>{
+    if(typeof y !== 'number') return;
+    lastPointerY = y;
+    if(state.ruler){
+      applyRulerPosition(lastPointerY);
+    }
+  };
 
   $('#toggle-ruler').addEventListener('change', (e)=>{
     state.ruler = e.target.checked;
     rulerEl.hidden = !state.ruler;
+    rulerEl.setAttribute('aria-hidden', String(!state.ruler));
 
     if (state.ruler) {
       // Feste Basis-Positionierung sicherstellen (Browser-Defaults neutralisieren)
@@ -85,9 +231,10 @@ const rulerEl = $('#ruler');
       rulerEl.style.zIndex = '9999';
 
       // Einmalige sinnvolle Startposition setzen
-      const h = rulerEl.getBoundingClientRect().height || 36;
-      const y = Math.max(0, (window.innerHeight * 0.40) - h / 2);
-      rulerEl.style.top = y + 'px';
+      requestAnimationFrame(()=>{
+        const y = typeof lastPointerY === 'number' ? lastPointerY : window.innerHeight * 0.40;
+        applyRulerPosition(y);
+      });
     }
     saveSettings();
   });
@@ -110,19 +257,35 @@ const rulerEl = $('#ruler');
   // TTS
   setupVoices();
 
-  // Leselineal: robuste Pointer-/Touch-Listener am Window
-  function onPointerMove(e){
-    if(!state.ruler) return;
-    const h = rulerEl.getBoundingClientRect().height || 36;
-    const y0 = (typeof e.clientY === 'number')
-      ? e.clientY
-      : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
-    const y = Math.max(0, Math.min(window.innerHeight - h, y0 - h/2));
-    rulerEl.style.top = y + 'px';
-  }
-  window.addEventListener('pointermove', onPointerMove, { passive: true });
-  window.addEventListener('mousemove',    onPointerMove, { passive: true });
-  window.addEventListener('touchmove',    onPointerMove, { passive: false });
+  // Leselineal: robuste Pointer-/Touch-Listener auf Dokumentebene
+  const resolvePointerY = (e)=>{
+    if(typeof e?.clientY === 'number') return e.clientY;
+    if(e?.pageY && !e.touches) return e.pageY - window.pageYOffset;
+    if(e?.touches && e.touches[0]) return e.touches[0].clientY;
+    if(e?.changedTouches && e.changedTouches[0]) return e.changedTouches[0].clientY;
+    return null;
+  };
+
+  const handlePointerUpdate = (e)=>{
+    const y = resolvePointerY(e);
+    if(typeof y !== 'number') return;
+    rememberPointerY(y);
+  };
+
+  const pointerTargets = [document, window];
+  const passivePointer = { passive: true };
+  pointerTargets.forEach((target)=>{
+    ['pointermove', 'pointerdown', 'mousemove'].forEach((evt)=>{
+      target.addEventListener(evt, handlePointerUpdate, passivePointer);
+    });
+  });
+
+  const touchListenerOptions = { passive: false };
+  pointerTargets.forEach((target)=>{
+    ['touchstart', 'touchmove'].forEach((evt)=>{
+      target.addEventListener(evt, handlePointerUpdate, touchListenerOptions);
+    });
+  });
 })();
 
 function hydrateSettings(){
@@ -136,12 +299,31 @@ function hydrateSettings(){
 
   // Immer mit ausgeschaltetem Leselineal starten (Policy)
   state.ruler = false;
+  state.lastResults = [];
+  state.lastQuery = '';
 
   $('#toggle-syll').checked = state.showSyll;
   $('#toggle-dys').checked = state.dys;
   $('#toggle-contrast').checked = state.contrast;
   $('#toggle-ruler').checked = false;          // Checkbox sicher "off"
   rulerEl.hidden = true;                       // Lineal verstecken
+  rulerEl.setAttribute('aria-hidden', 'true');
+
+  const settingsPanel = $('#settings-panel');
+  if(settingsPanel){
+    settingsPanel.hidden = true;
+    settingsPanel.setAttribute('hidden', '');
+    settingsPanel.style.display = 'none';
+  }
+  clearSettingsPanelVars();
+  const settingsToggle = $('#btn-settings');
+  if(settingsToggle){
+    settingsToggle.setAttribute('aria-expanded', 'false');
+    const wrapper = settingsToggle.closest('.settings-wrapper');
+    if(wrapper){
+      wrapper.classList.remove('open');
+    }
+  }
 
   document.body.classList.toggle('dys', state.dys);
   document.body.classList.toggle('contrast', state.contrast);
@@ -304,10 +486,12 @@ function distance(a,b){
 
 /* Rendering */
 function render(list, query=''){
-  const items = (list || []);
+  const items = Array.isArray(list) ? list.slice() : [];
+  state.lastResults = items;
+  state.lastQuery = typeof query === 'string' ? query : '';
   resultsEl.innerHTML = '';
   if(items.length === 0){
-    resultsEl.innerHTML = `<div class="card"><h2>Suche starten</h2><p class="definition">Gib mindestens zwei Buchstaben ein. Es werden nur Treffer angezeigt, nicht das ganze Wörterbuch.</p></div>`;
+    resultsEl.innerHTML = `<div class="card"><p class="definition">Gib mindestens zwei Buchstaben ein. Oder mache eine Aufnahme.</p></div>`;
     return;
   }
   const frag = document.createDocumentFragment();
@@ -341,6 +525,7 @@ function renderCard(entry, query){
       <button aria-label="Zur Lernliste" data-act="learn">Zur Lernliste</button>
     </div>
   `;
+  card.dataset.word = entry.wort;
 
   card.querySelectorAll('button').forEach(btn=>{
     btn.addEventListener('click', (ev)=>{
@@ -351,7 +536,53 @@ function renderCard(entry, query){
     });
   });
 
+  hydrateDefinitionForCard(card, entry, query);
   return card;
+}
+
+function hydrateDefinitionForCard(card, entry, query){
+  if(!card || !entry) return;
+  if(entry._defResolved) return;
+  if(entry.erklaerung && entry.erklaerung.trim()){
+    entry._defResolved = true;
+    return;
+  }
+  if(entry._defLoading) return;
+  const api = window.WortDB && typeof window.WortDB.getDefinition === 'function'
+    ? window.WortDB.getDefinition
+    : null;
+  if(!api) return;
+  entry._defLoading = true;
+  card.dataset.word = entry.wort;
+  api(entry.wort).then(def => {
+    entry._defLoading = false;
+    entry._defResolved = true;
+    if(!def) return;
+    if(def.def_kid){
+      entry.erklaerung = def.def_kid;
+    }else if(def.def_src){
+      const pieces = [];
+      if(def.def_src.pos) pieces.push(def.def_src.pos);
+      if(def.def_src.sense) pieces.push(def.def_src.sense);
+      const text = pieces.join(' · ').trim();
+      if(text) entry.erklaerung = text;
+    }
+    if(Array.isArray(def.beispiele) && def.beispiele.length){
+      entry.beispiele = def.beispiele.slice();
+    }
+    if(Array.isArray(def.tags) && def.tags.length){
+      const merged = new Set([...(entry.tags || []), ...def.tags]);
+      entry.tags = Array.from(merged);
+    }
+    if(!card.isConnected) return;
+    if(card.dataset.word !== entry.wort) return;
+    const fresh = renderCard(entry, query);
+    card.replaceWith(fresh);
+  }).catch(err => {
+    entry._defLoading = false;
+    entry._defResolved = true;
+    console.warn('def fetch failed', entry.wort, err);
+  });
 }
 
 function highlight(text, q){
@@ -443,6 +674,9 @@ function setupSpeechSearch(){
   const micBtn = document.getElementById('btn-mic');
   if(!micBtn) return;
 
+  micBtn.setAttribute('aria-pressed', 'false');
+  micBtn.title = 'Sprachsuche starten';
+
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR){
     micBtn.disabled = true;
@@ -451,22 +685,49 @@ function setupSpeechSearch(){
   }
 
   const rec = new SR();
-  rec.lang = 'de-CH';
   rec.interimResults = false;
   rec.maxAlternatives = 1;
+  rec.continuous = false;
 
   let active = false;
 
-  function start(){
-    try{
-      rec.lang = navigator.language && /^de-CH/i.test(navigator.language) ? 'de-CH' : 'de-DE';
-      rec.start();
-    }catch(_){}
+  function updateLanguage(){
+    const lang = navigator.language && /^de-CH/i.test(navigator.language) ? 'de-CH' : 'de-DE';
+    rec.lang = lang;
   }
-  function stop(){ try{ rec.stop(); }catch(_){} }
+
+  function resetUI(message){
+    active = false;
+    micBtn.setAttribute('aria-pressed','false');
+    micBtn.classList.remove('rec');
+    micBtn.title = message || 'Sprachsuche starten';
+  }
+
+  function start(){
+    if(active) return;
+    updateLanguage();
+    try{
+      rec.start();
+    }catch(err){
+      resetUI();
+      console.warn('SpeechRecognition start() fehlgeschlagen', err);
+    }
+  }
+
+  function stop(){
+    try{
+      rec.stop();
+    }catch(err){
+      resetUI();
+      console.warn('SpeechRecognition stop() fehlgeschlagen', err);
+    }
+  }
 
   micBtn.addEventListener('click', ()=>{
-    if(active){ stop(); return; }
+    if(active){
+      stop();
+      return;
+    }
     start();
   });
 
@@ -476,24 +737,40 @@ function setupSpeechSearch(){
     micBtn.classList.add('rec');
     micBtn.title = 'Zuhören … erneut klicken zum Stoppen';
   };
+
   rec.onend = ()=>{
-    active = false;
-    micBtn.setAttribute('aria-pressed','false');
-    micBtn.classList.remove('rec');
-    micBtn.title = 'Sprachsuche starten';
+    resetUI();
   };
+
   rec.onerror = (ev)=>{
-    if(ev && ev.error && ev.error !== 'aborted'){
+    if(!ev) return;
+    if(ev.error === 'not-allowed' || ev.error === 'service-not-allowed'){
+      resetUI('Mikrofonzugriff verweigert.');
+      micBtn.disabled = true;
+      micBtn.title = 'Zugriff auf das Mikrofon wurde blockiert.';
+      return;
+    }
+    if(ev.error === 'no-speech'){
+      resetUI('Keine Sprache erkannt – erneut versuchen.');
+      return;
+    }
+    if(ev.error !== 'aborted'){
+      resetUI();
       alert('Sprachsuche Fehler: ' + ev.error);
     }
   };
+
   rec.onresult = (ev)=>{
-    const res = ev.results && ev.results[0] && ev.results[0][0];
-    const text = res ? String(res.transcript||'').trim() : '';
+    const idx = ev.resultIndex ?? 0;
+    const list = ev.results && ev.results[idx] ? ev.results[idx] : (ev.results && ev.results[0]);
+    const alt = list && list[0];
+    const text = alt ? String(alt.transcript || '').trim() : '';
     if(!text) return;
     const q = $('#q');
+    if(!q) return;
     q.value = text;
-    doSearch(text);
+    q.focus();
+    q.dispatchEvent(new Event('input', { bubbles: true }));
   };
 }
 

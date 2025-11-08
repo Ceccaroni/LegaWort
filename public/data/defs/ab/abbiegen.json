@@ -1,0 +1,11 @@
+{
+  "wort": "abbiegen",
+  "def_src": { "pos": "Verb", "sense": "die Richtung wechseln" },
+  "def_kid": null,
+  "beispiele": ["\u201eBitte an der n\u00e4chsten Kreuzung rechts abbiegen.\u201c"],
+  "tags": ["Verb"],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 0
+}

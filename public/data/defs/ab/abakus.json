@@ -1,0 +1,11 @@
+{
+  "wort": "Abakus",
+  "def_src": { "pos": "Nomen", "sense": "Rechenbrett mit Kugeln auf Stäben" },
+  "def_kid": null,
+  "beispiele": ["\u201eKinder lernen das Rechnen am Abakus.\u201c"],
+  "tags": ["Nomen"],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 0
+}
