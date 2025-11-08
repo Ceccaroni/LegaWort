@@ -118,27 +118,22 @@ h1{
 
 /* Header Controls */
 .header-bar{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:16px;
-  flex-wrap:wrap;
-}
-
-@media (min-width: 721px){
-  .header-bar{ align-items:center; }
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  column-gap:16px;
+  row-gap:8px;
 }
 
 @media (max-width: 720px){
-  h1{ width:100%; }
-  .header-bar{ flex-direction:column; align-items:stretch; }
-  .settings-wrapper{ align-self:flex-end; }
+  .header-bar{ align-items:start; }
 }
 
 .settings-wrapper{
   position:relative;
   display:flex;
   align-items:center;
+  justify-self:end;
 }
 
 .settings-toggle{

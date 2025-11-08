@@ -490,7 +490,7 @@ function render(list, query=''){
   state.lastQuery = typeof query === 'string' ? query : '';
   resultsEl.innerHTML = '';
   if(items.length === 0){
-    resultsEl.innerHTML = `<div class="card"><h2>Suche starten</h2><p class="definition">Gib mindestens zwei Buchstaben ein. Es werden nur Treffer angezeigt, nicht das ganze Wörterbuch.</p></div>`;
+    resultsEl.innerHTML = `<div class="card"><p class="definition">Gib mindestens zwei Buchstaben ein. Oder mache eine Aufnahme.</p></div>`;
     return;
   }
   const frag = document.createDocumentFragment();
