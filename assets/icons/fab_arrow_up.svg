@@ -1,0 +1,6 @@
+<svg width="56" height="56" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FAB Pfeil oben">
+  <circle cx="32" cy="32" r="28" fill="#0A7DFF"/>
+  <circle cx="32" cy="32" r="28" fill="none" stroke="#0F1720" stroke-width="2.8"/>
+  <rect x="18" y="17" width="28" height="8" rx="4" fill="#66A8FF" opacity=".55"/>
+  <polyline points="22,36 32,26 42,36" fill="none" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
