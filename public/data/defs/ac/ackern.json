@@ -1,0 +1,16 @@
+{
+  "wort": "Ackern",
+  "def_src": {
+    "pos": "verb",
+    "sense": "intensiv arbeiten oder das Feld bestellen"
+  },
+  "def_kid": null,
+  "beispiele": [
+    "Wir ackern bis zum Sonnenuntergang."
+  ],
+  "tags": [],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 1762616652071
+}
