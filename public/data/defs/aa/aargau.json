@@ -1,0 +1,11 @@
+{
+  "wort": "Aargau",
+  "def_src": { "pos": "Eigenname", "sense": "Schweizer Kanton im Mittelland" },
+  "def_kid": null,
+  "beispiele": ["\u201eDer Aargau liegt zwischen Basel und Z\u00fcrich.\u201c"],
+  "tags": ["Nomen"],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 0
+}
