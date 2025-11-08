@@ -6,7 +6,7 @@ const path = require('path');
 const readline = require('readline');
 
 function parseArgs() {
-  const opts = { dry: false };
+  const opts = { dry: false, skipPrefixes: new Set() };
   for (const arg of process.argv.slice(2)) {
     if (arg === '--dry' || arg === '--dry-run') {
       opts.dry = true;
@@ -15,6 +15,12 @@ function parseArgs() {
     const match = arg.match(/^--([^=]+)=(.*)$/);
     if (match) {
       const [, key, value] = match;
+      if (key === 'skip-prefix') {
+        for (const item of value.split(',').map((v) => v.trim()).filter(Boolean)) {
+          opts.skipPrefixes.add(normalizePrefix(item));
+        }
+        continue;
+      }
       opts[key] = value;
       continue;
     }
@@ -24,6 +30,16 @@ function parseArgs() {
   if (!opts.in) throw new Error('Missing --in');
   if (!opts.out) throw new Error('Missing --out');
   opts.prefix = normalizePrefix(opts.prefix);
+  if (opts.skipPrefixes.size === 0 && process.env.WIKTEXTRACT_SKIP_PREFIXES) {
+    for (const item of process.env.WIKTEXTRACT_SKIP_PREFIXES.split(',').map((v) => v.trim()).filter(Boolean)) {
+      opts.skipPrefixes.add(normalizePrefix(item));
+    }
+  }
+  if (opts.skipPrefixes.has(opts.prefix)) {
+    console.info(`Prefix ${opts.prefix} is in skip list; exiting without changes.`);
+    opts.skipCurrent = true;
+    return opts;
+  }
   return opts;
 }
 
@@ -122,6 +138,9 @@ function mapEntry(entry) {
 }
 
 async function processFile(opts) {
+  if (opts.skipCurrent) {
+    return { processed: 0, created: 0, skipped: 0 };
+  }
   const inPath = opts.in;
   if (!fs.existsSync(inPath)) throw new Error(`Input file not found: ${inPath}`);
   const outRoot = opts.out;
@@ -148,6 +167,11 @@ async function processFile(opts) {
     if (!entry?.word) continue;
     const normWord = norm(entry.word);
     if (!normWord.startsWith(opts.prefix)) continue;
+    if (opts.skipPrefixes.has(normWord.slice(0, 2))) {
+      skipped += 1;
+      console.info(`skip prefix ${normWord.slice(0, 2)} for ${entry.word}`);
+      continue;
+    }
 
     processed += 1;
     const fileName = sanitizeFilename(entry.word) + '.json';
