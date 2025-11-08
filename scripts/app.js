@@ -675,8 +675,6 @@ async function doSearch(input){
       if(results.length >= SEARCH_MIN_PRIMARY) break;
     }
   }
-  return out;
-}
 
   render(results.slice(0, SEARCH_MAX_RESULTS), trimmed);
 }
@@ -1086,7 +1084,7 @@ function highlight(text, q){
   try{
     const re = new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')+')','ig');
     return text.replace(re, '<mark>$1</mark>');
-  }catch{ return text; }
+  }catch(err){ return text; }
 }
 
 function esc(s){ return (s||'').replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
@@ -1366,7 +1364,7 @@ function splitCSVLine(line, delim){
 /* Lernwörter */
 function hydrateLearn(){
   const raw = localStorage.getItem('lw_learn');
-  if(raw){ try{ state.learnWords = JSON.parse(raw) || []; }catch{} }
+  if(raw){ try{ state.learnWords = JSON.parse(raw) || []; }catch(err){} }
   renderLearn();
 }
 function saveLearn(){
