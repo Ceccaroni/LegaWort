@@ -1,0 +1,11 @@
+{
+  "wort": "Abart",
+  "def_src": { "pos": "Nomen", "sense": "Variante oder Abweichung von etwas" },
+  "def_kid": null,
+  "beispiele": ["\u201eDiese Pflanze ist eine seltene Abart der Rose.\u201c"],
+  "tags": ["Nomen"],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 0
+}
