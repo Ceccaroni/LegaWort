@@ -524,6 +524,7 @@ function renderCard(entry, query){
       <button aria-label="Zur Lernliste" data-act="learn">Zur Lernliste</button>
     </div>
   `;
+  card.dataset.word = entry.wort;
 
   card.querySelectorAll('button').forEach(btn=>{
     btn.addEventListener('click', (ev)=>{
@@ -534,7 +535,53 @@ function renderCard(entry, query){
     });
   });
 
+  hydrateDefinitionForCard(card, entry, query);
   return card;
+}
+
+function hydrateDefinitionForCard(card, entry, query){
+  if(!card || !entry) return;
+  if(entry._defResolved) return;
+  if(entry.erklaerung && entry.erklaerung.trim()){
+    entry._defResolved = true;
+    return;
+  }
+  if(entry._defLoading) return;
+  const api = window.WortDB && typeof window.WortDB.getDefinition === 'function'
+    ? window.WortDB.getDefinition
+    : null;
+  if(!api) return;
+  entry._defLoading = true;
+  card.dataset.word = entry.wort;
+  api(entry.wort).then(def => {
+    entry._defLoading = false;
+    entry._defResolved = true;
+    if(!def) return;
+    if(def.def_kid){
+      entry.erklaerung = def.def_kid;
+    }else if(def.def_src){
+      const pieces = [];
+      if(def.def_src.pos) pieces.push(def.def_src.pos);
+      if(def.def_src.sense) pieces.push(def.def_src.sense);
+      const text = pieces.join(' · ').trim();
+      if(text) entry.erklaerung = text;
+    }
+    if(Array.isArray(def.beispiele) && def.beispiele.length){
+      entry.beispiele = def.beispiele.slice();
+    }
+    if(Array.isArray(def.tags) && def.tags.length){
+      const merged = new Set([...(entry.tags || []), ...def.tags]);
+      entry.tags = Array.from(merged);
+    }
+    if(!card.isConnected) return;
+    if(card.dataset.word !== entry.wort) return;
+    const fresh = renderCard(entry, query);
+    card.replaceWith(fresh);
+  }).catch(err => {
+    entry._defLoading = false;
+    entry._defResolved = true;
+    console.warn('def fetch failed', entry.wort, err);
+  });
 }
 
 function highlight(text, q){

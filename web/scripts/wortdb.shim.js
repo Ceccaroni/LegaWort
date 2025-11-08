@@ -15,6 +15,7 @@ function getCache(w){
     const obj = JSON.parse(raw);
     const age = (Date.now() - (obj.ts_cached||0)) / 86400000;
     if (age > TTL_DAYS) return null;
+    console.info('def cache hit', w);
     return obj;
   } catch { return null; }
 }
@@ -29,6 +30,7 @@ function defPath(w){
 }
 async function fetchDef(w){
   const url = defPath(w);
+  console.info('def local fetch', w);
   const res = await fetch(url, { cache: "force-cache" });
   if (!res.ok) throw new Error(`404 ${url}`);
   return await res.json();
