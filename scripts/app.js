@@ -245,7 +245,6 @@ function clearSettingsPanelVars(){
   // Import/Export
   $('#btn-import').addEventListener('click', ()=> $('#file').click());
   $('#file').addEventListener('change', onImport);
-  $('#btn-export').addEventListener('click', onExport);
 
   // Benutzerdaten leeren
   const clearBtn = document.getElementById('btn-clear-user');
@@ -652,6 +651,19 @@ async function doSearch(input){
       if(results.length >= SEARCH_MIN_PRIMARY) break;
     }
   }
+  if(!scored.length) return scored;
+  const ranked = rankV2(scored, baseQuery);
+  if(Array.isArray(ranked) && ranked.length){
+    return ranked;
+  }
+  scored.sort((a, b)=>{
+    const da = typeof a._dlDist === 'number' ? a._dlDist : Infinity;
+    const db = typeof b._dlDist === 'number' ? b._dlDist : Infinity;
+    if(da !== db) return da - db;
+    return String(a.wort || '').localeCompare(String(b.wort || ''), 'de');
+  });
+  return scored;
+}
 
   if(results.length < SEARCH_MIN_PRIMARY){
     const variantSet = expandAnlautVariants(primaryQuery);
