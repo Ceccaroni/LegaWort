@@ -418,6 +418,11 @@ function normalizeV2(str){
   return stripped.replace(/[^a-z]/g, '');
 }
 
+function phonKeyV2(str){
+  if(!str) return '';
+  return normalizeV2(str);
+}
+
 function entryKey(entry){
   if(!entry) return '';
   if(typeof entry._matchKey === 'string') return entry._matchKey;
@@ -670,6 +675,8 @@ async function doSearch(input){
       if(results.length >= SEARCH_MIN_PRIMARY) break;
     }
   }
+  return out;
+}
 
   render(results.slice(0, SEARCH_MAX_RESULTS), trimmed);
 }
@@ -807,13 +814,16 @@ function rankV2(candidates, query){
   if(!Array.isArray(candidates) || !candidates.length) return candidates || [];
   const q = typeof query === 'string' ? query : '';
   const qLen = q.length;
+  const qPhon = phonKeyV2(q);
   const scored = candidates.map(entry => {
     const key = entryKey(entry);
     const len = key.length;
     const prefixLen = q && key ? longestCommonPrefix(key, q) : 0;
     const prefixScore = qLen ? prefixLen / qLen : 0;
-    const phonScore = typeof entry._dlScore === 'number' ? entry._dlScore : 0;
-    const weightedDL = typeof entry._wdl === 'number' ? entry._wdl : phonScore;
+    const candidatePhon = typeof entry.phon === 'string' ? entry.phon : '';
+    const phonScore = qPhon && candidatePhon && qPhon === candidatePhon ? 1 : 0;
+    const legacyPhonScore = typeof entry._dlScore === 'number' ? entry._dlScore : 0;
+    const weightedDL = typeof entry._wdl === 'number' ? entry._wdl : legacyPhonScore;
     const freq = Number.isFinite(entry._freqHint) ? entry._freqHint : getEntryFrequency(entry);
     const lenDelta = Number.isFinite(entry._lenDelta) ? entry._lenDelta : (len - qLen);
     const score = computeScoreV2({
@@ -826,6 +836,7 @@ function rankV2(candidates, query){
     entry._rankV2 = score;
     entry._prefixScore = prefixScore;
     entry._phonScore = phonScore;
+    entry._phonKey = candidatePhon;
     entry._freqHint = freq;
     entry._len = len;
     entry._lenDelta = lenDelta;
