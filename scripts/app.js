@@ -629,6 +629,8 @@ async function doSearch(input){
 
     addFromSource(state.data, prefix, false);
   }
+  return dp[m][n];
+}
 
   while(prefixQueue.length){
     const pref = prefixQueue.shift();
@@ -651,19 +653,6 @@ async function doSearch(input){
       if(results.length >= SEARCH_MIN_PRIMARY) break;
     }
   }
-  if(!scored.length) return scored;
-  const ranked = rankV2(scored, baseQuery);
-  if(Array.isArray(ranked) && ranked.length){
-    return ranked;
-  }
-  scored.sort((a, b)=>{
-    const da = typeof a._dlDist === 'number' ? a._dlDist : Infinity;
-    const db = typeof b._dlDist === 'number' ? b._dlDist : Infinity;
-    if(da !== db) return da - db;
-    return String(a.wort || '').localeCompare(String(b.wort || ''), 'de');
-  });
-  return scored;
-}
 
   if(results.length < SEARCH_MIN_PRIMARY){
     const variantSet = expandAnlautVariants(primaryQuery);
@@ -992,6 +981,24 @@ function norm(s){
 }
 
 /* Rendering */
+const POS_DE = {
+  noun: 'Nomen',
+  verb: 'Verb',
+  adjective: 'Adjektiv',
+  adverb: 'Adverb',
+  proper_noun: 'Eigenname',
+  Nomen: 'Nomen',
+  Verb: 'Verb',
+  Adjektiv: 'Adjektiv',
+  Adverb: 'Adverb',
+  Eigenname: 'Eigenname'
+};
+
+function posLabelV2(pos){
+  if(!pos) return '';
+  return POS_DE[pos] || pos || '';
+}
+
 function displayHeadwordV2(wort, pos){
   if(!wort) return '';
   const raw = String(wort);
@@ -1021,11 +1028,25 @@ function renderCard(entry, query){
   const card = document.createElement('article');
   card.className = 'card';
   card.tabIndex = 0;
-  const headwordPos = (entry.def_src && entry.def_src.pos) || (Array.isArray(entry.tags) && entry.tags.length ? entry.tags[0] : '');
-  const headword = displayHeadwordV2(entry.wort, headwordPos);
+  const headwordPosRaw = (entry.def_src && entry.def_src.pos) || (Array.isArray(entry.tags) && entry.tags.length ? entry.tags[0] : '');
+  const headword = displayHeadwordV2(entry.wort, headwordPosRaw);
+  const primaryTag = posLabelV2(headwordPosRaw);
   const w = esc(headword);
   const s = state.showSyll ? ' · ' + esc(showSyllables(entry)) : '';
-  const tags = (entry.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join(' ');
+  const tagLabels = [];
+  if(primaryTag){
+    tagLabels.push(primaryTag);
+  }
+  if(Array.isArray(entry.tags)){
+    const startIdx = headwordPosRaw ? 1 : 0;
+    for(let i = startIdx; i < entry.tags.length; i++){
+      const label = posLabelV2(entry.tags[i]);
+      if(label && !tagLabels.includes(label)){
+        tagLabels.push(label);
+      }
+    }
+  }
+  const tags = tagLabels.map(t=>`<span class="tag">${esc(t)}</span>`).join(' ');
   const def = esc(entry.erklaerung || '');
   const ex = (entry.beispiele||[]).map(x=>`<div class="example">„${esc(x)}“</div>`).join('');
 
