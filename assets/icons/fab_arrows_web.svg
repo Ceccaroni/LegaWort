@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <!-- Variablen: mit CSS überschreibbar -->
+  <style>
+    :root{
+      --fab-size: 56;                 /* Durchmesser in px */
+      --fab-fill: #0A7DFF;            /* Kreisfüllung */
+      --fab-border: #0F1720;          /* Kreisrand */
+      --fab-border-w: 2.8;            /* Randstärke */
+      --fab-icon: #FFFFFF;            /* Pfeilfarbe */
+      --fab-highlight: #66A8FF;       /* Pille */
+      --fab-highlight-op: .55;        /* Pille-Deckkraft */
+    }
+  </style>
+
+  <!-- Basis: Kreis + Highlight + Arrow (Richtung definiert die Pfeilgeometrie) -->
+  <!-- viewBox 0 0 64 64; FAB ca. 56 px mit 2.8 px Rand -->
+  <symbol id="fab-arrow-down" viewBox="0 0 64 64">
+    <!-- Kreisfüllung -->
+    <circle cx="32" cy="32" r="28" fill="var(--fab-fill)"/>
+    <!-- Kontur -->
+    <circle cx="32" cy="32" r="28" fill="none" stroke="var(--fab-border)" stroke-width="var(--fab-border-w)"/>
+    <!-- Highlight-Pille (leicht tiefer gesetzt) -->
+    <rect x="18" y="39" width="28" height="8" rx="4"
+          fill="var(--fab-highlight)" opacity="var(--fab-highlight-op)"/>
+    <!-- Pfeil -->
+    <polyline points="22,28 32,38 42,28"
+              fill="none" stroke="var(--fab-icon)" stroke-width="2.8"
+              stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="fab-arrow-up" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="28" fill="var(--fab-fill)"/>
+    <circle cx="32" cy="32" r="28" fill="none" stroke="var(--fab-border)" stroke-width="var(--fab-border-w)"/>
+    <rect x="18" y="17" width="28" height="8" rx="4"
+          fill="var(--fab-highlight)" opacity="var(--fab-highlight-op)"/>
+    <polyline points="22,36 32,26 42,36"
+              fill="none" stroke="var(--fab-icon)" stroke-width="2.8"
+              stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="fab-arrow-left" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="28" fill="var(--fab-fill)"/>
+    <circle cx="32" cy="32" r="28" fill="none" stroke="var(--fab-border)" stroke-width="var(--fab-border-w)"/>
+    <rect x="17" y="18" width="8" height="28" rx="4"
+          fill="var(--fab-highlight)" opacity="var(--fab-highlight-op)"/>
+    <polyline points="36,22 26,32 36,42"
+              fill="none" stroke="var(--fab-icon)" stroke-width="2.8"
+              stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="fab-arrow-right" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="28" fill="var(--fab-fill)"/>
+    <circle cx="32" cy="32" r="28" fill="none" stroke="var(--fab-border)" stroke-width="var(--fab-border-w)"/>
+    <rect x="39" y="18" width="8" height="28" rx="4"
+          fill="var(--fab-highlight)" opacity="var(--fab-highlight-op)"/>
+    <polyline points="28,22 38,32 28,42"
+              fill="none" stroke="var(--fab-icon)" stroke-width="2.8"
+              stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+</svg>
