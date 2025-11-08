@@ -375,6 +375,19 @@ const CONFUSION_RULES = [
   ['k', 'ch']
 ];
 
+const WDL_SUB_COSTS_V2 = new Map([
+  ['b|p', 0.4], ['p|b', 0.4],
+  ['d|t', 0.4], ['t|d', 0.4],
+  ['g|k', 0.5], ['k|g', 0.5],
+  ['ä|e', 0.5], ['e|ä', 0.5],
+  ['ß|ss', 0.4], ['ss|ß', 0.4],
+  ['ei|ie', 0.6], ['ie|ei', 0.6],
+  ['ch|sch', 0.6], ['sch|ch', 0.6],
+  ['k|ck', 0.5], ['ck|k', 0.5],
+  ['e|r', 0.3], ['r|e', 0.3],
+  ['t|z', 0.3], ['z|t', 0.3]
+]);
+
 function matchKey(str){
   if(!str) return '';
   const base = String(str)
@@ -672,22 +685,31 @@ function filterMatches(list, patterns, baseQuery){
     const key = entryKey(entry);
     if(!key) continue;
     const entryTokens = tokenizeKey(key);
-    let best = Infinity;
+    let bestLegacy = Infinity;
+    let bestV2 = Infinity;
     for(const pattern of patternTokens){
       if(key.startsWith(pattern.key)){
-        best = 0;
+        bestLegacy = 0;
+        bestV2 = 0;
         break;
       }
       const { distance } = weightedDamerauLevenshtein(pattern.tokens, entryTokens);
-      if(distance < best){
-        best = distance;
+      if(distance < bestLegacy){
+        bestLegacy = distance;
       }
-      if(best === 0) break;
+      const distV2 = wdlDistanceV2(pattern.tokens, entryTokens);
+      if(distV2 < bestV2){
+        bestV2 = distV2;
+      }
+      if(bestLegacy === 0 && bestV2 === 0) break;
     }
-    if(best === Infinity) continue;
-    if(best > threshold) continue;
-    entry._dlDist = best;
-    entry._dlScore = 1 / (1 + best);
+    if(bestLegacy === Infinity && bestV2 === Infinity) continue;
+    if(bestLegacy === Infinity || bestLegacy > threshold) continue;
+    if(bestV2 === Infinity || bestV2 > threshold) continue;
+    entry._dlDist = bestLegacy;
+    entry._dlScore = 1 / (1 + bestLegacy);
+    entry._dist = bestV2;
+    entry._wdl = wdlScoreV2(bestV2);
     scored.push(entry);
   }
   scored.sort((a, b)=>{
@@ -739,6 +761,54 @@ function insertionCost(index){
 
 function deletionCost(index){
   return positionWeight(index);
+}
+
+function substitutionCostV2(aToken, bToken, index){
+  if(aToken === bToken) return 0;
+  const key = `${aToken}|${bToken}`;
+  const cost = WDL_SUB_COSTS_V2.get(key);
+  const base = typeof cost === 'number' ? cost : 1;
+  return base * positionWeight(index);
+}
+
+function transpositionCostV2(idxA, idxB){
+  if(idxA === 0 && idxB === 1) return 0.5;
+  const w1 = positionWeight(idxA);
+  const w2 = positionWeight(idxB);
+  return (w1 + w2) / 2;
+}
+
+function wdlDistanceV2(aTokens, bTokens){
+  const a = Array.isArray(aTokens) ? aTokens : [];
+  const b = Array.isArray(bTokens) ? bTokens : [];
+  const m = a.length;
+  const n = b.length;
+  if(m === 0 && n === 0) return 0;
+  const dp = Array.from({ length: m + 1 }, ()=>Array(n + 1).fill(0));
+  for(let i = 1; i <= m; i++){
+    dp[i][0] = dp[i - 1][0] + positionWeight(i - 1);
+  }
+  for(let j = 1; j <= n; j++){
+    dp[0][j] = dp[0][j - 1] + positionWeight(j - 1);
+  }
+  for(let i = 1; i <= m; i++){
+    for(let j = 1; j <= n; j++){
+      const del = dp[i - 1][j] + positionWeight(i - 1);
+      const ins = dp[i][j - 1] + positionWeight(j - 1);
+      const sub = dp[i - 1][j - 1] + substitutionCostV2(a[i - 1], b[j - 1], Math.min(i - 1, j - 1));
+      let val = Math.min(del, ins, sub);
+      if(i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]){
+        val = Math.min(val, dp[i - 2][j - 2] + transpositionCostV2(i - 2, i - 1));
+      }
+      dp[i][j] = val;
+    }
+  }
+  return dp[m][n];
+}
+
+function wdlScoreV2(dist){
+  if(typeof dist !== 'number' || !isFinite(dist)) return 0;
+  return 1 / (1 + dist);
 }
 
 function substitutionCost(aToken, bToken, index){
