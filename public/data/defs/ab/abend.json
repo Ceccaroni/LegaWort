@@ -1,11 +1,18 @@
 {
   "wort": "Abend",
-  "def_src": { "pos": "Nomen", "sense": "Tageszeit zwischen Nachmittag und Nacht" },
+  "def_src": {
+    "pos": "noun",
+    "sense": "Tageszeit zwischen Nachmittag und Nacht"
+  },
   "def_kid": null,
-  "beispiele": ["\u201eAm Abend treffen wir uns zum Essen.\u201c"],
-  "tags": ["Nomen"],
+  "beispiele": [
+    "Am Abend sitzen wir gern zusammen."
+  ],
+  "tags": [
+    "Nomen"
+  ],
   "source": "wiktionary",
   "via": "wiktextract",
   "license": "CC-BY-SA 4.0",
-  "ts_cached": 0
+  "ts_cached": 1762616304288
 }

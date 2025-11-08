@@ -1,11 +1,18 @@
 {
   "wort": "Abart",
-  "def_src": { "pos": "Nomen", "sense": "Variante oder Abweichung von etwas" },
+  "def_src": {
+    "pos": "noun",
+    "sense": "Variante einer Art"
+  },
   "def_kid": null,
-  "beispiele": ["\u201eDiese Pflanze ist eine seltene Abart der Rose.\u201c"],
-  "tags": ["Nomen"],
+  "beispiele": [
+    "Diese Abart der Pflanze ist besonders robust."
+  ],
+  "tags": [
+    "Nomen"
+  ],
   "source": "wiktionary",
   "via": "wiktextract",
   "license": "CC-BY-SA 4.0",
-  "ts_cached": 0
+  "ts_cached": 1762616304283
 }

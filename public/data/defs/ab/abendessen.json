@@ -1,11 +1,18 @@
 {
   "wort": "Abendessen",
-  "def_src": { "pos": "Nomen", "sense": "Mahlzeit am Abend" },
+  "def_src": {
+    "pos": "noun",
+    "sense": "letzte Mahlzeit des Tages"
+  },
   "def_kid": null,
-  "beispiele": ["\u201eZum Abendessen gibt es Suppe.\u201c"],
-  "tags": ["Nomen"],
+  "beispiele": [
+    "Zum Abendessen gab es Suppe."
+  ],
+  "tags": [
+    "Nomen"
+  ],
   "source": "wiktionary",
   "via": "wiktextract",
   "license": "CC-BY-SA 4.0",
-  "ts_cached": 0
+  "ts_cached": 1762616304290
 }

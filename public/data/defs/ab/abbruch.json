@@ -1,11 +1,18 @@
 {
   "wort": "Abbruch",
-  "def_src": { "pos": "Nomen", "sense": "das Beenden oder Abrei\u00dfen von etwas" },
+  "def_src": {
+    "pos": "noun",
+    "sense": "Abreißen eines Bauwerks"
+  },
   "def_kid": null,
-  "beispiele": ["\u201eDer Abbruch des alten Hauses beginnt morgen.\u201c"],
-  "tags": ["Nomen"],
+  "beispiele": [
+    "Der Abbruch des Hauses begann heute."
+  ],
+  "tags": [
+    "Nomen"
+  ],
   "source": "wiktionary",
   "via": "wiktextract",
   "license": "CC-BY-SA 4.0",
-  "ts_cached": 0
+  "ts_cached": 1762616304288
 }

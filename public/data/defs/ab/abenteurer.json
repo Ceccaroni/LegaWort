@@ -1,12 +1,12 @@
 {
-  "wort": "Abakus",
+  "wort": "Abenteurer",
   "def_src": {
     "pos": "noun",
-    "sense": "Rechenhilfe mit Kugeln"
+    "sense": "Person, die Abenteuer sucht"
   },
   "def_kid": null,
   "beispiele": [
-    "Kinder lernen das Zählen mit dem Abakus."
+    "Der Abenteurer bestieg den Vulkan."
   ],
   "tags": [
     "Nomen"
@@ -14,5 +14,5 @@
   "source": "wiktionary",
   "via": "wiktextract",
   "license": "CC-BY-SA 4.0",
-  "ts_cached": 1762616304277
+  "ts_cached": 1762616304292
 }
