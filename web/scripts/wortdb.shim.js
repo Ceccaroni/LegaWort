@@ -1,5 +1,6 @@
 const BASE = "/LegaWort/public/data/defs";
 const TTL_DAYS = 180;
+const inflight = new Map(); // wort -> Promise
 
 function norm(s){
   return (s||"").toLowerCase()
@@ -15,7 +16,6 @@ function getCache(w){
     const obj = JSON.parse(raw);
     const age = (Date.now() - (obj.ts_cached||0)) / 86400000;
     if (age > TTL_DAYS) return null;
-    console.info('def cache hit', w);
     return obj;
   } catch { return null; }
 }
@@ -28,23 +28,57 @@ function defPath(w){
   const f = (n.replace(/[^a-z0-9_]/g,"_") || "_");
   return `${BASE}/${p}/${f}.json`;
 }
-async function fetchDef(w){
+async function fetchLocalDef(w){
   const url = defPath(w);
-  console.info('def local fetch', w);
   const res = await fetch(url, { cache: "force-cache" });
   if (!res.ok) throw new Error(`404 ${url}`);
   return await res.json();
 }
 
+async function fetchRemoteDef(w){
+  throw new Error('remote lookup unavailable');
+}
+
 window.WortDB = window.WortDB || {};
-window.WortDB.getDefinition = async function(wort){
+window.WortDB.getDefinition = async function (wort) {
   const c = getCache(wort);
-  if (c) return c;
+  if (c) {
+    console.info("def cache hit", wort);
+    return c;
+  }
+
+  if (inflight.has(wort)) return inflight.get(wort);
+
+  const p = (async () => {
+    try {
+      const obj = await fetchLocalDef(wort);
+      console.info("def local fetch", wort);
+      setCache(wort, obj);
+      return obj;
+    } catch {}
+
+    try {
+      const obj = await fetchRemoteDef(wort);
+      console.info("def remote fetch", wort);
+      setCache(wort, obj);
+      return obj;
+    } catch {}
+
+    return {
+      wort,
+      def_kid: null,
+      beispiele: [],
+      tags: [],
+      source: "none",
+      license: null,
+      ts_cached: Date.now(),
+    };
+  })();
+
+  inflight.set(wort, p);
   try {
-    const obj = await fetchDef(wort);
-    setCache(wort, obj);
-    return obj;
-  } catch {
-    return { wort, def_kid: null, beispiele: [], tags: [], source: "none", license: null };
+    return await p;
+  } finally {
+    inflight.delete(wort);
   }
 };
