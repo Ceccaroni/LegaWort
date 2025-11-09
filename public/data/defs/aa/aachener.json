@@ -1,0 +1,18 @@
+{
+  "wort": "Aachener",
+  "def_src": {
+    "pos": "Nomen",
+    "sense": "Einwohner oder Einwohnerin der Stadt Aachen"
+  },
+  "def_kid": null,
+  "beispiele": [
+    "„Ein Aachener brachte Printen mit.“"
+  ],
+  "tags": [
+    "Nomen"
+  ],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 0
+}

@@ -1,0 +1,18 @@
+{
+  "wort": "Abenteuer",
+  "def_src": {
+    "pos": "Nomen",
+    "sense": "ungewöhnliches Erlebnis"
+  },
+  "def_kid": null,
+  "beispiele": [
+    "„Die Reise war ein großes Abenteuer.“"
+  ],
+  "tags": [
+    "Nomen"
+  ],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 1762616304291
+}
