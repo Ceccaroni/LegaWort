@@ -1,0 +1,22 @@
+{
+  "wort": "Aarau",
+  "def_src": {
+    "pos": "Eigenname",
+    "sense": "Hauptstadt des Schweizer Kantons Aargau"
+  },
+  "def_kid": null,
+  "beispiele": [
+    "„Wir treffen uns morgen in Aarau.“"
+  ],
+  "silben": [
+    "Aa",
+    "rau"
+  ],
+  "tags": [
+    "Nomen"
+  ],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 0
+}
