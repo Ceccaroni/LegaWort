@@ -1104,6 +1104,35 @@ function displayHeadwordV2(wort, pos){
   return raw.toLowerCase();
 }
 
+const POS_LABEL_PREFIXES = ['Nomen','Eigenname','Verb','Adjektiv','Adverb','Pronomen','Präposition','Substantiv'];
+
+function stripLeadingPosLabel(text){
+  if(!text) return '';
+  let trimmed = String(text).trim();
+  for(const label of POS_LABEL_PREFIXES){
+    const pattern = new RegExp(`^${label}(?:\\s*[,:\\.\-–—]+\\s*|\\s+)`, 'i');
+    if(pattern.test(trimmed)){
+      const without = trimmed.replace(pattern, '').trim();
+      if(without){
+        return without;
+      }
+      return label;
+    }
+  }
+  return trimmed;
+}
+
+function displayDefinitionV2(entry){
+  if(!entry) return '';
+  const sense = entry.def_src && typeof entry.def_src.sense === 'string'
+    ? entry.def_src.sense.trim()
+    : '';
+  if(sense) return stripLeadingPosLabel(sense);
+  const raw = entry.erklaerung ? String(entry.erklaerung) : '';
+  if(!raw) return '';
+  return stripLeadingPosLabel(raw);
+}
+
 function render(list, query=''){
   const items = Array.isArray(list) ? list.slice() : [];
   state.lastResults = items;
@@ -1129,7 +1158,7 @@ function renderCard(entry, query){
   const primaryTag = posLabelV2(headwordPosRaw);
   const syllableText = state.showSyll ? (renderSilbenV2(entry) || showSyllables(entry)) : '';
   const headMarkup = highlightHeadV2(headword, query);
-  const syllMarkup = (state.showSyll && syllableText) ? `· ${esc(syllableText)}` : '';
+  const syllMarkup = (state.showSyll && syllableText) ? esc(syllableText) : '';
   const tagLabels = [];
   if(primaryTag){
     tagLabels.push(primaryTag);
@@ -1144,7 +1173,7 @@ function renderCard(entry, query){
     }
   }
   const tags = tagLabels.map(t=>`<span class="tag">${highlightHeadV2(t, query)}</span>`).join(' ');
-  const def = esc(entry.erklaerung || '');
+  const def = esc(displayDefinitionV2(entry));
   const exampleText = quoteExampleV2(entry.beispiele && entry.beispiele[0]);
   const ex = exampleText ? `<div class="example">${esc(exampleText)}</div>` : '';
 
@@ -1195,14 +1224,22 @@ function hydrateDefinitionForCard(card, entry, query){
     entry._defLoading = false;
     entry._defResolved = true;
     if(!def) return;
-    if(def.def_kid){
-      entry.erklaerung = def.def_kid;
+    if(def.def_src){
+      entry.def_src = Object.assign({}, entry.def_src, def.def_src || {});
+    }
+    let resolvedDef = '';
+    if(def.def_kid && typeof def.def_kid === 'string'){
+      resolvedDef = def.def_kid.trim();
     }else if(def.def_src){
-      const pieces = [];
-      if(def.def_src.pos) pieces.push(def.def_src.pos);
-      if(def.def_src.sense) pieces.push(def.def_src.sense);
-      const text = pieces.join(' ').replace(/\s+/g, ' ').trim();
-      if(text) entry.erklaerung = text;
+      const senseText = typeof def.def_src.sense === 'string' ? def.def_src.sense.trim() : '';
+      if(senseText){
+        resolvedDef = senseText;
+      }else if(typeof def.def_src.pos === 'string' && def.def_src.pos.trim()){
+        resolvedDef = def.def_src.pos.trim();
+      }
+    }
+    if(resolvedDef){
+      entry.erklaerung = stripLeadingPosLabel(resolvedDef);
     }
     if(Array.isArray(def.beispiele) && def.beispiele.length){
       entry.beispiele = def.beispiele.slice();
