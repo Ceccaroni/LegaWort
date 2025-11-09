@@ -1,12 +1,12 @@
 {
-  "wort": "Abartig",
+  "wort": "abartig",
   "def_src": {
-    "pos": "adj",
+    "pos": "Adjektiv",
     "sense": "von der Norm abweichend"
   },
   "def_kid": null,
   "beispiele": [
-    "Das ist eine abartige Vorstellung."
+    "„Das ist eine abartige Vorstellung.“"
   ],
   "tags": [
     "Adjektiv"

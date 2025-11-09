@@ -1,12 +1,12 @@
 {
   "wort": "Abendessen",
   "def_src": {
-    "pos": "noun",
+    "pos": "Nomen",
     "sense": "letzte Mahlzeit des Tages"
   },
   "def_kid": null,
   "beispiele": [
-    "Zum Abendessen gab es Suppe."
+    "„Zum Abendessen gab es Suppe.“"
   ],
   "tags": [
     "Nomen"

@@ -1,15 +1,15 @@
 {
   "wort": "Achsel",
   "def_src": {
-    "pos": "noun",
+    "pos": "Nomen",
     "sense": "Bereich unter dem Arm"
   },
   "def_kid": null,
   "beispiele": [
-    "Sie hat sich die Achsel verletzt."
+    "„Sie hat sich die Achsel verletzt.“"
   ],
   "tags": [
-    "Anatomie"
+    "Nomen"
   ],
   "source": "wiktionary",
   "via": "wiktextract",

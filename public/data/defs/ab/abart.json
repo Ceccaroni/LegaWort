@@ -1,12 +1,12 @@
 {
   "wort": "Abart",
   "def_src": {
-    "pos": "noun",
+    "pos": "Nomen",
     "sense": "Variante einer Art"
   },
   "def_kid": null,
   "beispiele": [
-    "Diese Abart der Pflanze ist besonders robust."
+    "„Diese Abart der Pflanze ist besonders robust.“"
   ],
   "tags": [
     "Nomen"

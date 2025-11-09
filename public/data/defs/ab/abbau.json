@@ -1,12 +1,12 @@
 {
   "wort": "Abbau",
   "def_src": {
-    "pos": "noun",
+    "pos": "Nomen",
     "sense": "das Abtragen oder Zerlegen von etwas"
   },
   "def_kid": null,
   "beispiele": [
-    "Der Abbau der Altbaustoffe dauert lange."
+    "„Der Abbau der Altbaustoffe dauert lange.“"
   ],
   "tags": [
     "Nomen"

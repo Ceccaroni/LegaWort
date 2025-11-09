@@ -1,12 +1,12 @@
 {
   "wort": "Abend",
   "def_src": {
-    "pos": "noun",
+    "pos": "Nomen",
     "sense": "Tageszeit zwischen Nachmittag und Nacht"
   },
   "def_kid": null,
   "beispiele": [
-    "Am Abend sitzen wir gern zusammen."
+    "„Am Abend sitzen wir gern zusammen.“"
   ],
   "tags": [
     "Nomen"

@@ -1,12 +1,12 @@
 {
-  "wort": "Abbiegen",
+  "wort": "abbiegen",
   "def_src": {
-    "pos": "verb",
+    "pos": "Verb",
     "sense": "eine Richtungsänderung vornehmen"
   },
   "def_kid": null,
   "beispiele": [
-    "Bitte vor der Kreuzung rechts abbiegen."
+    "„Bitte vor der Kreuzung rechts abbiegen.“"
   ],
   "tags": [
     "Verb"
