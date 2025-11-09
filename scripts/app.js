@@ -740,6 +740,12 @@ async function runSearch(input){
       if(results.length >= SEARCH_MIN_PRIMARY) break;
     }
   }
+  return out;
+}
+
+function positionWeight(index){
+  return index <= 2 ? 2 : 1;
+}
 
   if(results.length < SEARCH_MIN_PRIMARY){
     const variantSet = expandAnlautVariants(primaryQuery);
@@ -764,6 +770,13 @@ async function runSearch(input){
       if(results.length >= SEARCH_MIN_PRIMARY) break;
     }
   }
+  return dp[m][n];
+}
+
+function wdlScoreV2(dist){
+  if(typeof dist !== 'number' || !isFinite(dist)) return 0;
+  return 1 / (1 + dist);
+}
 
   render(results.slice(0, SEARCH_MAX_RESULTS), trimmed);
 }
