@@ -1201,7 +1201,7 @@ function hydrateDefinitionForCard(card, entry, query){
       const pieces = [];
       if(def.def_src.pos) pieces.push(def.def_src.pos);
       if(def.def_src.sense) pieces.push(def.def_src.sense);
-      const text = pieces.join(' · ').trim();
+      const text = pieces.join(' ').replace(/\s+/g, ' ').trim();
       if(text) entry.erklaerung = text;
     }
     if(Array.isArray(def.beispiele) && def.beispiele.length){

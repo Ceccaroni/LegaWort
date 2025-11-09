@@ -57,6 +57,41 @@ const POS_MAP = {
   prefix: "Präfix"
 };
 
+function stripMarkup(value){
+  if(typeof value !== "string") return "";
+  return value
+    .replace(/<[^>]*>/g, " ")
+    .replace(/~~/g, "")
+    .replace(/[\u0332-\u0338]/g, "")
+    .replace(/&[a-z]+;/gi, " ");
+}
+
+function sanitizeSenseText(value){
+  if(typeof value !== "string") return "";
+  let text = stripMarkup(value).trim();
+  text = text.replace(/^[-•·\u2022]+\s*/, "");
+  text = text.replace(/^\.+\s*/, "");
+  text = text.replace(/\s+/g, " ").trim();
+  return text;
+}
+
+function sanitizeExampleText(value){
+  if(typeof value !== "string") return "";
+  let text = stripMarkup(value).trim();
+  if(!text) return "";
+  text = text.replace(/^[-•·\u2022]+\s*/, "");
+  text = text.replace(/^"+/, "").replace(/"+$/, "");
+  text = text.replace(/^„+/, "„").replace(/“+$/, "“");
+  text = text.replace(/\s+/g, " ").trim();
+  if(!text.startsWith("„")){
+    text = "„" + text.replace(/^„/, "");
+  }
+  if(!text.endsWith("“")){
+    text = text.replace(/“$/, "") + "“";
+  }
+  return text;
+}
+
 function titleCase(str){
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
@@ -87,7 +122,7 @@ function collectExamples(entry, sense){
   };
   if (sense && Array.isArray(sense.examples)) sense.examples.forEach(pushExample);
   if (!out.length && entry && Array.isArray(entry.examples)) entry.examples.forEach(pushExample);
-  return out;
+  return out.map(sanitizeExampleText).filter(Boolean);
 }
 
 function dedupe(arr){
@@ -151,7 +186,8 @@ function mapWiktextract(wort, raw){
   const entry = entries.find(e => e && norm(e.word || "") === n) || entries[0];
   if (!entry) return null;
   const sense = pickSense(entry);
-  const gloss = sense && Array.isArray(sense.glosses) && sense.glosses.length ? sense.glosses[0] : sense && Array.isArray(sense.raw_glosses) && sense.raw_glosses.length ? sense.raw_glosses[0] : "";
+  const glossRaw = sense && Array.isArray(sense.glosses) && sense.glosses.length ? sense.glosses[0] : sense && Array.isArray(sense.raw_glosses) && sense.raw_glosses.length ? sense.raw_glosses[0] : "";
+  const gloss = sanitizeSenseText(glossRaw);
   const posRaw = (sense && sense.pos) || entry.pos || "";
   const posKey = posRaw && posRaw.toLowerCase().replace(/\s+/g, "-");
   const pos = POS_MAP[posRaw] || POS_MAP[posKey] || (posRaw ? titleCase(posRaw.replace(/[-_]/g, " ")) : null);

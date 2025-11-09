@@ -96,6 +96,37 @@ function extractSenseText(sense) {
   return null;
 }
 
+function stripMarkup(value) {
+  if (typeof value !== 'string') return '';
+  return value
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/~~/g, '')
+    .replace(/[\u0332-\u0338]/g, '')
+    .replace(/&[a-z]+;/gi, ' ');
+}
+
+function sanitizeSenseText(value) {
+  if (typeof value !== 'string') return '';
+  let text = stripMarkup(value).trim();
+  text = text.replace(/^[-•·\u2022]+\s*/, '');
+  text = text.replace(/^\.+\s*/, '');
+  text = text.replace(/\s+/g, ' ').trim();
+  return text;
+}
+
+function sanitizeExampleText(value) {
+  if (typeof value !== 'string') return '';
+  let text = stripMarkup(value).trim();
+  if (!text) return '';
+  text = text.replace(/^[-•·\u2022]+\s*/, '');
+  text = text.replace(/^"+/, '').replace(/"+$/, '');
+  text = text.replace(/^„+/, '„').replace(/“+$/, '“');
+  text = text.replace(/\s+/g, ' ').trim();
+  if (!text.startsWith('„')) text = `„${text.replace(/^„/, '')}`;
+  if (!text.endsWith('“')) text = `${text.replace(/“$/, '')}“`;
+  return text;
+}
+
 function extractExamples(sense) {
   if (!sense) return [];
   const examples = [];
@@ -109,7 +140,7 @@ function extractExamples(sense) {
       if (examples.length) break;
     }
   }
-  return examples;
+  return examples.map(sanitizeExampleText).filter(Boolean);
 }
 
 function collectTags(entry, sense) {
@@ -132,7 +163,7 @@ function mapEntry(entry) {
   const sense = pickSense(entry);
   const def_src = {
     pos: entry?.pos || sense?.pos || null,
-    sense: extractSenseText(sense) || null,
+    sense: sanitizeSenseText(extractSenseText(sense)) || null,
   };
 
   return {
