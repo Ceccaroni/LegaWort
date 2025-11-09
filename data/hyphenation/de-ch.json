@@ -1,0 +1,567 @@
+{
+  "metadata": {
+    "language": "de-CH",
+    "encoding": "UTF-8",
+    "algorithm": "Liang-Knuth hyphenation algorithm with German-specific rules",
+    "version": "1.0",
+    "description": "Comprehensive German (Swiss) syllable separation rules for web applications",
+    "references": [
+      "Liang, F. M. (1983). Word Hy-phen-a-tion by Com-put-er. Stanford University PhD thesis.",
+      "Knuth, D. E., & Plass, M. F. (1981). Breaking paragraphs into lines. Software: Practice and Experience.",
+      "German hyphenation patterns from TeX (dehyphn.tex, dehypht.tex)"
+    ]
+  },
+  "parameters": {
+    "left_hyphen_min": 2,
+    "right_hyphen_min": 2,
+    "min_word_length": 3,
+    "hyphen_char": "-",
+    "word_boundary_marker": "."
+  },
+  "basic_rules": {
+    "vowels": [
+      "a",
+      "e",
+      "i",
+      "o",
+      "u",
+      "ä",
+      "ö",
+      "ü"
+    ],
+    "diphthongs": [
+      "ai",
+      "au",
+      "äu",
+      "eu",
+      "ei",
+      "ie"
+    ],
+    "consonants": [
+      "b",
+      "c",
+      "d",
+      "f",
+      "g",
+      "h",
+      "j",
+      "k",
+      "l",
+      "m",
+      "n",
+      "p",
+      "q",
+      "r",
+      "s",
+      "t",
+      "v",
+      "w",
+      "x",
+      "y",
+      "z",
+      "ß"
+    ],
+    "inseparable_digraphs": [
+      "ch",
+      "ck",
+      "ph",
+      "rh",
+      "sh",
+      "th"
+    ],
+    "inseparable_trigraphs": [
+      "sch",
+      "tch"
+    ],
+    "separable_consonant_groups": [
+      "st",
+      "tz"
+    ]
+  },
+  "structural_rules": [
+    {
+      "rule_id": "R1",
+      "name": "syllable_requires_vowel",
+      "description": "Every syllable must contain at least one vowel, umlaut, or diphthong",
+      "priority": 100,
+      "applies_to": "all_words",
+      "validation": "each_syllable_has_vowel"
+    },
+    {
+      "rule_id": "R2",
+      "name": "single_consonant_between_vowels",
+      "description": "A single consonant between vowels goes to the next syllable",
+      "pattern": "V-C-V",
+      "split": "V|CV",
+      "priority": 90,
+      "examples": [
+        "le-sen",
+        "ho-len",
+        "Ba-na-ne"
+      ]
+    },
+    {
+      "rule_id": "R3",
+      "name": "double_consonants",
+      "description": "Double consonants are separated",
+      "pattern": "V-CC-V (where C1=C2)",
+      "split": "VC|CV",
+      "priority": 95,
+      "examples": [
+        "Mut-ter",
+        "kom-men",
+        "Sup-pe"
+      ]
+    },
+    {
+      "rule_id": "R4",
+      "name": "multiple_consonants",
+      "description": "With multiple different consonants, the last consonant goes to the next syllable",
+      "pattern": "V-CCC...-V",
+      "split": "VCC...|CV",
+      "priority": 85,
+      "exceptions": [
+        "inseparable_digraphs",
+        "inseparable_trigraphs"
+      ],
+      "examples": [
+        "Fens-ter",
+        "Fin-ger",
+        "ar-bei-ten"
+      ]
+    },
+    {
+      "rule_id": "R5",
+      "name": "inseparable_ch",
+      "description": "ch is never separated",
+      "pattern": "ch",
+      "split": "never",
+      "priority": 100,
+      "examples": [
+        "ma-chen",
+        "Bücher",
+        "spre-chen"
+      ]
+    },
+    {
+      "rule_id": "R6",
+      "name": "inseparable_ck",
+      "description": "ck is never separated",
+      "pattern": "ck",
+      "split": "never",
+      "priority": 100,
+      "examples": [
+        "Ba-cken",
+        "Zu-cker",
+        "Ste-cken"
+      ]
+    },
+    {
+      "rule_id": "R7",
+      "name": "inseparable_sch",
+      "description": "sch is never separated",
+      "pattern": "sch",
+      "split": "never",
+      "priority": 100,
+      "examples": [
+        "wa-schen",
+        "Fla-sche",
+        "Du-sche"
+      ]
+    },
+    {
+      "rule_id": "R8",
+      "name": "separable_st",
+      "description": "st in the middle of a word can be separated",
+      "pattern": "st",
+      "split": "s|t",
+      "priority": 80,
+      "position": "middle",
+      "examples": [
+        "Fens-ter",
+        "bes-te",
+        "Wes-ten"
+      ]
+    },
+    {
+      "rule_id": "R9",
+      "name": "separable_tz",
+      "description": "tz in the middle is separated as t|z",
+      "pattern": "tz",
+      "split": "t|z",
+      "priority": 95,
+      "examples": [
+        "Plat-ze",
+        "Kat-ze",
+        "sit-zen"
+      ]
+    },
+    {
+      "rule_id": "R10",
+      "name": "compound_words",
+      "description": "Compound words separate at component boundaries",
+      "priority": 98,
+      "split": "word1|word2",
+      "examples": [
+        "Haus-tür",
+        "Schul-buch",
+        "Bahn-hof"
+      ]
+    },
+    {
+      "rule_id": "R11",
+      "name": "prefixes",
+      "description": "Common prefixes form separate syllables",
+      "prefixes": [
+        "ver-",
+        "be-",
+        "ge-",
+        "er-",
+        "ent-",
+        "emp-",
+        "zer-",
+        "vor-",
+        "zu-",
+        "ab-",
+        "an-",
+        "auf-",
+        "aus-",
+        "bei-",
+        "mit-",
+        "nach-",
+        "über-",
+        "um-",
+        "unter-"
+      ],
+      "priority": 92,
+      "examples": [
+        "ver-ste-hen",
+        "be-gin-nen",
+        "ge-le-sen"
+      ]
+    },
+    {
+      "rule_id": "R12",
+      "name": "suffixes",
+      "description": "Common suffixes form separate syllables",
+      "suffixes": [
+        "-ung",
+        "-heit",
+        "-keit",
+        "-schaft",
+        "-chen",
+        "-lein",
+        "-lich",
+        "-ig",
+        "-bar",
+        "-sam",
+        "-los"
+      ],
+      "priority": 92,
+      "examples": [
+        "Woh-nung",
+        "Frei-heit",
+        "freund-lich"
+      ]
+    }
+  ],
+  "liang_patterns": {
+    "description": "Pattern-based hyphenation following Liang algorithm. Numbers indicate priority (odd=break, even=inhibit)",
+    "pattern_format": "Characters with interspersed numbers where odd numbers indicate valid breakpoints",
+    "pattern_syntax": {
+      "dot": "Word boundary marker (.)",
+      "numbers": "Priority values 0-9",
+      "odd_numbers": "Indicate valid hyphenation points",
+      "even_numbers": "Inhibit hyphenation at that position",
+      "max_priority": "When multiple patterns match, take maximum priority"
+    },
+    "common_patterns": [
+      ".ab3",
+      ".an1",
+      ".auf3",
+      ".aus3",
+      ".be3",
+      ".bei3",
+      ".da3",
+      ".dar3",
+      ".ein3",
+      ".emp3",
+      ".ent3",
+      ".er3",
+      ".ge3",
+      ".her3",
+      ".hin3",
+      ".mit3",
+      ".nach3",
+      ".über3",
+      ".um3",
+      ".un3",
+      ".unter3",
+      ".ver3",
+      ".vor3",
+      ".zu3",
+      "1ba",
+      "1be",
+      "1bi",
+      "1bo",
+      "1bu",
+      "1bä",
+      "1bö",
+      "1bü",
+      "1da",
+      "1de",
+      "1di",
+      "1do",
+      "1du",
+      "1dä",
+      "1dö",
+      "1dü",
+      "1fa",
+      "1fe",
+      "1fi",
+      "1fo",
+      "1fu",
+      "1fä",
+      "1fö",
+      "1fü",
+      "1ga",
+      "1ge",
+      "1gi",
+      "1go",
+      "1gu",
+      "1gä",
+      "1gö",
+      "1gü",
+      "1ha",
+      "1he",
+      "1hi",
+      "1ho",
+      "1hu",
+      "1hä",
+      "1hö",
+      "1hü",
+      "1ka",
+      "1ke",
+      "1ki",
+      "1ko",
+      "1ku",
+      "1kä",
+      "1kö",
+      "1kü",
+      "1la",
+      "1le",
+      "1li",
+      "1lo",
+      "1lu",
+      "1lä",
+      "1lö",
+      "1lü",
+      "1ma",
+      "1me",
+      "1mi",
+      "1mo",
+      "1mu",
+      "1mä",
+      "1mö",
+      "1mü",
+      "1na",
+      "1ne",
+      "1ni",
+      "1no",
+      "1nu",
+      "1nä",
+      "1nö",
+      "1nü",
+      "1pa",
+      "1pe",
+      "1pi",
+      "1po",
+      "1pu",
+      "1pä",
+      "1pö",
+      "1pü",
+      "1ra",
+      "1re",
+      "1ri",
+      "1ro",
+      "1ru",
+      "1rä",
+      "1rö",
+      "1rü",
+      "1sa",
+      "1se",
+      "1si",
+      "1so",
+      "1su",
+      "1sä",
+      "1sö",
+      "1sü",
+      "1ta",
+      "1te",
+      "1ti",
+      "1to",
+      "1tu",
+      "1tä",
+      "1tö",
+      "1tü",
+      "1va",
+      "1ve",
+      "1vi",
+      "1vo",
+      "1vu",
+      "1vä",
+      "1vö",
+      "1vü",
+      "1wa",
+      "1we",
+      "1wi",
+      "1wo",
+      "1wu",
+      "1wä",
+      "1wö",
+      "1wü",
+      "aa1",
+      "ee1",
+      "ii1",
+      "oo1",
+      "uu1",
+      "1che",
+      "1chen",
+      "chen4",
+      "ck4",
+      "ch4",
+      "sch4",
+      "ph4",
+      "1len",
+      "1nen",
+      "1sen",
+      "1ten",
+      "1ren",
+      "1men",
+      "len4",
+      "nen4",
+      "sen4",
+      "ten4",
+      "ren4",
+      "men4",
+      "st3",
+      "tz3",
+      "2ung",
+      "3ung.",
+      "1keit",
+      "1heit",
+      "1schaft",
+      "2lich",
+      "3lich.",
+      "1ig3",
+      "1bar",
+      "1sam",
+      "tt1",
+      "mm1",
+      "nn1",
+      "pp1",
+      "ll1",
+      "ss1",
+      "ff1",
+      "t2t",
+      "m2m",
+      "n2n",
+      "p2p",
+      "l2l",
+      "s2s",
+      "f2f"
+    ]
+  },
+  "exceptions": {
+    "description": "Words with exceptional hyphenation that override pattern matching",
+    "list": [
+      {
+        "word": "Interesse",
+        "hyphenation": "In-te-res-se"
+      },
+      {
+        "word": "Computer",
+        "hyphenation": "Com-pu-ter"
+      },
+      {
+        "word": "Rhythmus",
+        "hyphenation": "Rhyth-mus"
+      },
+      {
+        "word": "Analysis",
+        "hyphenation": "Ana-ly-sis"
+      }
+    ]
+  },
+  "algorithm_steps": [
+    {
+      "step": 1,
+      "name": "normalize_input",
+      "description": "Convert word to lowercase for pattern matching, preserve original for output"
+    },
+    {
+      "step": 2,
+      "name": "check_exceptions",
+      "description": "Look up word in exception dictionary; if found, use predefined hyphenation"
+    },
+    {
+      "step": 3,
+      "name": "add_word_boundaries",
+      "description": "Extend word with boundary markers: .word."
+    },
+    {
+      "step": 4,
+      "name": "initialize_priorities",
+      "description": "Create array of priorities (len(word)+1), initialized to 0"
+    },
+    {
+      "step": 5,
+      "name": "match_patterns",
+      "description": "For each pattern, find all matching positions in extended word and apply priorities"
+    },
+    {
+      "step": 6,
+      "name": "resolve_priorities",
+      "description": "At each position, take MAXIMUM priority from all matching patterns"
+    },
+    {
+      "step": 7,
+      "name": "select_breakpoints",
+      "description": "Valid breakpoints are positions with ODD final priority values"
+    },
+    {
+      "step": 8,
+      "name": "apply_constraints",
+      "description": "Filter breakpoints: must be >= left_hyphen_min and <= len(word)-right_hyphen_min"
+    },
+    {
+      "step": 9,
+      "name": "validate_syllables",
+      "description": "Ensure each resulting syllable contains at least one vowel"
+    },
+    {
+      "step": 10,
+      "name": "return_result",
+      "description": "Return list of valid hyphenation positions or hyphenated string"
+    }
+  ],
+  "implementation_guide": {
+    "data_structures": {
+      "pattern_trie": "For efficient pattern matching, store patterns in a trie (prefix tree)",
+      "priority_array": "Integer array of size len(word)+1 to track priorities at each position",
+      "exception_dict": "Hash table for O(1) lookup of exception words"
+    },
+    "complexity": {
+      "time": "O(n*m) where n=word length, m=average pattern length",
+      "space": "O(p) where p=number of patterns in trie",
+      "optimization": "Patterns can be compiled once and reused for all words"
+    },
+    "edge_cases": [
+      "Words shorter than min_word_length: return unchanged",
+      "Words with no vowels: return unchanged",
+      "Single-syllable words: return unchanged",
+      "Compound words: may need special handling for semantic correctness",
+      "Foreign words: may produce suboptimal results"
+    ]
+  }
+}

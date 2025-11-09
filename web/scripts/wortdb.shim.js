@@ -2,6 +2,67 @@ const BASE = "/LegaWort/public/data/defs";
 const REMOTE_BASE = "https://kaikki.org/dictionary/German/words";
 const TTL_DAYS = 180;
 const inflight = new Map(); // wort -> Promise
+const hyphenationState = { compiled: null, promise: null };
+
+function hyphenateWithCompiled(word){
+  if(!word || !window || !window.LegaHyphenation || !hyphenationState.compiled) return [];
+  const out = window.LegaHyphenation.hyphenate(word, hyphenationState.compiled);
+  return Array.isArray(out) ? out.filter(Boolean) : [];
+}
+
+function ensureHyphenation(){
+  if(!window) return Promise.resolve(null);
+  if(hyphenationState.compiled){
+    return Promise.resolve(hyphenationState.compiled);
+  }
+  if(window.LEGA_HYPHENATION_COMPILED && !hyphenationState.compiled){
+    hyphenationState.compiled = window.LEGA_HYPHENATION_COMPILED;
+    if(typeof window.LEGA_HYPHENATE !== 'function'){
+      window.LEGA_HYPHENATE = word => hyphenateWithCompiled(word);
+    }
+    return Promise.resolve(hyphenationState.compiled);
+  }
+  if(!window.LegaHyphenation || typeof window.LegaHyphenation.compileHyphenation !== 'function'){
+    return Promise.resolve(null);
+  }
+  if(!hyphenationState.promise){
+    hyphenationState.promise = fetch('data/hyphenation/de-ch.json')
+      .then(res => {
+        if(!res.ok) throw new Error(`hyphenation ${res.status}`);
+        return res.json();
+      })
+      .then(raw => {
+        const compiled = window.LegaHyphenation.compileHyphenation(raw);
+        hyphenationState.compiled = compiled;
+        window.LEGA_HYPHENATION_COMPILED = compiled;
+        window.LEGA_HYPHENATE = word => hyphenateWithCompiled(word);
+        return compiled;
+      })
+      .catch(err => {
+        console.warn('Hyphenation data unavailable (shim)', err);
+        hyphenationState.compiled = null;
+        return null;
+      })
+      .finally(() => {
+        if(!hyphenationState.compiled){
+          hyphenationState.promise = null;
+        }
+      });
+  }
+  return hyphenationState.promise;
+}
+
+async function applyHyphenation(wort, obj){
+  if(!obj || (Array.isArray(obj.silben) && obj.silben.length)) return obj;
+  if(!wort) return obj;
+  const compiled = await ensureHyphenation();
+  if(!compiled) return obj;
+  const parts = hyphenateWithCompiled(wort);
+  if(parts.length){
+    obj.silben = parts;
+  }
+  return obj;
+}
 
 function norm(s){
   return (s||"").toLowerCase()
@@ -35,6 +96,7 @@ async function fetchLocalDef(w){
   if (!res.ok) throw new Error(`404 ${url}`);
   const data = await res.json();
   normalizeSilbenField(data);
+  await applyHyphenation(w, data);
   console.info("def local fetch", w, url);
   return data;
 }
@@ -219,6 +281,7 @@ async function fetchRemoteDef(w){
   const mapped = mapWiktextract(w, data);
   if (!mapped) throw new Error(`no remote def ${w}`);
   normalizeSilbenField(mapped);
+  await applyHyphenation(w, mapped);
   console.info("def remote fetch", w, url);
   return mapped;
 }

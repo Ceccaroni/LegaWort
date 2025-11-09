@@ -25,12 +25,14 @@ const state = {
   // Grossdatensatz via Prefix-Chunks (optional)
   chunkIndex: null,        // { prefixLen: 2, prefixes: { "aa": "aa.json", ... } }
   chunkCache: new Map(),   // prefix -> Array<{wort,...}>
-  chunkPrefixLen: 2
+  chunkPrefixLen: 2,
+  hyphenation: null
 };
 
 const $ = sel => document.querySelector(sel);
 const resultsEl = $('#results');
 const rulerEl = $('#ruler');
+const hyphenationState = { compiled: null, promise: null };
 const SETTINGS_PANEL_VARS = [
   '--settings-panel-top',
   '--settings-panel-left',
@@ -70,6 +72,8 @@ function clearSettingsPanelVars(){
   }catch(e){
     // kein Chunk-Betrieb aktiv – OK
   }
+
+  ensureHyphenation();
 
   // Userdaten laden
   const u = localStorage.getItem('lw_user_entries');
@@ -736,6 +740,12 @@ async function runSearch(input){
       if(results.length >= SEARCH_MIN_PRIMARY) break;
     }
   }
+  return out;
+}
+
+function positionWeight(index){
+  return index <= 2 ? 2 : 1;
+}
 
   if(results.length < SEARCH_MIN_PRIMARY){
     const variantSet = expandAnlautVariants(primaryQuery);
@@ -760,6 +770,13 @@ async function runSearch(input){
       if(results.length >= SEARCH_MIN_PRIMARY) break;
     }
   }
+  return dp[m][n];
+}
+
+function wdlScoreV2(dist){
+  if(typeof dist !== 'number' || !isFinite(dist)) return 0;
+  return 1 / (1 + dist);
+}
 
   render(results.slice(0, SEARCH_MAX_RESULTS), trimmed);
 }
@@ -1330,8 +1347,95 @@ function showSyllables(entry){
   return guessSyllables(entry.wort).join('·');
 }
 
+function hyphenateWordV2(word){
+  if(!word) return [];
+  if(window.LegaHyphenation && hyphenationState.compiled){
+    const parts = window.LegaHyphenation.hyphenate(word, hyphenationState.compiled);
+    if(Array.isArray(parts) && parts.length){
+      return parts.filter(Boolean);
+    }
+  }
+  ensureHyphenation();
+  if(typeof window.LEGA_HYPHENATE === 'function'){
+    const parts = window.LEGA_HYPHENATE(word);
+    if(Array.isArray(parts) && parts.length){
+      return parts.filter(Boolean);
+    }
+  }
+  return [];
+}
+
+function ensureHyphenation(){
+  if(typeof window === 'undefined'){
+    return Promise.resolve(null);
+  }
+  if(hyphenationState.compiled){
+    return Promise.resolve(hyphenationState.compiled);
+  }
+  if(window.LEGA_HYPHENATION_COMPILED && !hyphenationState.compiled){
+    hyphenationState.compiled = window.LEGA_HYPHENATION_COMPILED;
+    state.hyphenation = hyphenationState.compiled;
+    window.LEGA_HYPHENATE = word => {
+      if(!word || !window.LegaHyphenation || !hyphenationState.compiled) return [];
+      const out = window.LegaHyphenation.hyphenate(word, hyphenationState.compiled);
+      return Array.isArray(out) ? out.filter(Boolean) : [];
+    };
+    return Promise.resolve(hyphenationState.compiled);
+  }
+  if(!window.LegaHyphenation || typeof window.LegaHyphenation.compileHyphenation !== 'function'){
+    return Promise.resolve(null);
+  }
+  if(!hyphenationState.promise){
+    hyphenationState.promise = fetch('data/hyphenation/de-ch.json')
+      .then(res => {
+        if(!res.ok) throw new Error(`hyphenation ${res.status}`);
+        return res.json();
+      })
+      .then(raw => {
+        const compiled = window.LegaHyphenation.compileHyphenation(raw);
+        hyphenationState.compiled = compiled;
+        state.hyphenation = compiled;
+        window.LEGA_HYPHENATION_COMPILED = compiled;
+        window.LEGA_HYPHENATE = word => {
+          if(!word || !window.LegaHyphenation || !hyphenationState.compiled) return [];
+          const out = window.LegaHyphenation.hyphenate(word, hyphenationState.compiled);
+          return Array.isArray(out) ? out.filter(Boolean) : [];
+        };
+        if(state.lastResults && state.lastResults.length){
+          render(state.lastResults, state.lastQuery || '');
+        }
+        return compiled;
+      })
+      .catch(err => {
+        console.warn('Hyphenation data unavailable', err);
+        hyphenationState.compiled = null;
+        state.hyphenation = null;
+        window.LEGA_HYPHENATION_COMPILED = null;
+        return null;
+      })
+      .finally(() => {
+        if(!hyphenationState.compiled){
+          hyphenationState.promise = null;
+        }
+      });
+  }
+  return hyphenationState.promise;
+}
+
+if(typeof window !== 'undefined' && typeof window.LEGA_HYPHENATE !== 'function'){
+  window.LEGA_HYPHENATE = word => {
+    if(!word) return [];
+    if(window.LegaHyphenation && hyphenationState.compiled){
+      const out = window.LegaHyphenation.hyphenate(word, hyphenationState.compiled);
+      return Array.isArray(out) ? out.filter(Boolean) : [];
+    }
+    ensureHyphenation();
+    return [];
+  };
+}
+
 /* sehr einfache Silbenheuristik, nur Fallback */
-function guessSyllables(word){
+function legacyGuessSyllables(word){
   if(!word) return [];
   const w = word.toLowerCase().replace(/ß/g,'ss');
   const vowels = 'aeiouäöüy';
@@ -1362,6 +1466,15 @@ function guessSyllables(word){
     }
   }
   return parts;
+}
+
+function guessSyllables(word){
+  if(!word) return [];
+  const parts = hyphenateWordV2(word);
+  if(parts.length){
+    return parts;
+  }
+  return legacyGuessSyllables(word);
 }
 
 /* TTS – lokal via Web Speech API, bevorzugt de-CH */

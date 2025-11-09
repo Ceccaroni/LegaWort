@@ -4,6 +4,18 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const hyphenation = require('../shared/hyphenation');
+
+let hyphenationCompiled = null;
+try {
+  const hyphenationPath = path.join(__dirname, '..', 'data', 'hyphenation', 'de-ch.json');
+  if (fs.existsSync(hyphenationPath)) {
+    const raw = JSON.parse(fs.readFileSync(hyphenationPath, 'utf8'));
+    hyphenationCompiled = hyphenation.compileHyphenation(raw);
+  }
+} catch (err) {
+  console.warn('Hyphenation data unavailable for importer:', err.message);
+}
 
 function parseArgs() {
   const opts = { dry: false, skipPrefixes: new Set() };
@@ -166,7 +178,7 @@ function mapEntry(entry) {
     sense: sanitizeSenseText(extractSenseText(sense)) || null,
   };
 
-  return {
+  const mapped = {
     wort: entry?.word || '',
     def_src: def_src,
     def_kid: null,
@@ -177,6 +189,15 @@ function mapEntry(entry) {
     license: 'CC-BY-SA 4.0',
     ts_cached: Date.now(),
   };
+
+  if (hyphenationCompiled && mapped.wort) {
+    const parts = hyphenation.hyphenate(mapped.wort, hyphenationCompiled);
+    if (Array.isArray(parts) && parts.length) {
+      mapped.silben = parts;
+    }
+  }
+
+  return mapped;
 }
 
 async function processFile(opts) {
