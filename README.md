@@ -1,4 +1,4 @@
-# Legasthenie-Wörterbuch (CH-DE)
+# Dyslexikon (CH-DE)
 
 Statisch, offline-fähig, ohne externe Ressourcen. Für GitHub Pages gedacht. Schweizer Orthografie (ss statt ß).
 
@@ -34,6 +34,21 @@ Ein einfaches Wörterbuch für Lernende mit Legasthenie. Klarer Satz, anpassbare
   { "wort": "Apfel", "silben": ["Ap","fel"], "erklaerung": "Eine runde Frucht.", "beispiele": ["Ich esse einen Apfel."], "tags": ["Lebensmittel","Nomen"] }
 ]}
 ```
+
+## Datenquelle & Ablage
+Quelle: Deutsches Wiktionary (CC-BY-SA 4.0), via Wiktextract (kaikki.org); Pfad: `public/data/defs/<2er-Prefix>/<lemma>.json`; Dateinamen: Kleinbuchstaben, Sonderzeichen → `_`
+Schema:
+```json
+{
+  "wort": "...",
+  "def_src": { "pos": "...", "sense": "..." },
+  "def_kid": null,
+  "beispiele": ["„...“"],
+  "tags": ["Nomen|Verb|Adjektiv"],
+  "source": "wiktionary", "via": "wiktextract", "license": "CC-BY-SA 4.0", "ts_cached": 0
+}
+```
+Attribution: `public/attribution.html`
 
 ### CSV-Import
 Spalten-Köpfe: `wort;erklaerung;silben;beispiele;tags`  

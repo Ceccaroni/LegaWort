@@ -1,0 +1,18 @@
+{
+  "wort": "Abbau",
+  "def_src": {
+    "pos": "Nomen",
+    "sense": "das Abtragen oder Zerlegen von etwas"
+  },
+  "def_kid": null,
+  "beispiele": [
+    "„Der Abbau der Altbaustoffe dauert lange.“"
+  ],
+  "tags": [
+    "Nomen"
+  ],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 1762616304285
+}
