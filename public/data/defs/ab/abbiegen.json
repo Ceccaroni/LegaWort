@@ -1,0 +1,18 @@
+{
+  "wort": "abbiegen",
+  "def_src": {
+    "pos": "Verb",
+    "sense": "eine Richtungsänderung vornehmen"
+  },
+  "def_kid": null,
+  "beispiele": [
+    "„Bitte vor der Kreuzung rechts abbiegen.“"
+  ],
+  "tags": [
+    "Verb"
+  ],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 1762616304286
+}
