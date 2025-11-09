@@ -1,15 +1,15 @@
 {
   "wort": "Ackerbau",
   "def_src": {
-    "pos": "noun",
+    "pos": "Nomen",
     "sense": "Bewirtschaftung von Feldern"
   },
   "def_kid": null,
   "beispiele": [
-    "Der Ackerbau prägt die Landschaft."
+    "„Der Ackerbau prägt die Landschaft.“"
   ],
   "tags": [
-    "Landwirtschaft"
+    "Nomen"
   ],
   "source": "wiktionary",
   "via": "wiktextract",

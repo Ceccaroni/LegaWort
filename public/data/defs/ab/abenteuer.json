@@ -1,12 +1,12 @@
 {
   "wort": "Abenteuer",
   "def_src": {
-    "pos": "noun",
+    "pos": "Nomen",
     "sense": "ungewöhnliches Erlebnis"
   },
   "def_kid": null,
   "beispiele": [
-    "Die Reise war ein großes Abenteuer."
+    "„Die Reise war ein großes Abenteuer.“"
   ],
   "tags": [
     "Nomen"

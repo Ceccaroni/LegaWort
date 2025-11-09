@@ -1,12 +1,12 @@
 {
   "wort": "Abenteurer",
   "def_src": {
-    "pos": "noun",
+    "pos": "Nomen",
     "sense": "Person, die Abenteuer sucht"
   },
   "def_kid": null,
   "beispiele": [
-    "Der Abenteurer bestieg den Vulkan."
+    "„Der Abenteurer bestieg den Vulkan.“"
   ],
   "tags": [
     "Nomen"

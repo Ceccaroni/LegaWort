@@ -1,14 +1,16 @@
 {
   "wort": "Acker",
   "def_src": {
-    "pos": "noun",
+    "pos": "Nomen",
     "sense": "bestelltes Feld"
   },
   "def_kid": null,
   "beispiele": [
-    "Der Acker ist frisch gepflügt."
+    "„Der Acker ist frisch gepflügt.“"
   ],
-  "tags": [],
+  "tags": [
+    "Nomen"
+  ],
   "source": "wiktionary",
   "via": "wiktextract",
   "license": "CC-BY-SA 4.0",

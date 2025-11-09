@@ -1,12 +1,12 @@
 {
   "wort": "Abbruch",
   "def_src": {
-    "pos": "noun",
+    "pos": "Nomen",
     "sense": "Abreißen eines Bauwerks"
   },
   "def_kid": null,
   "beispiele": [
-    "Der Abbruch des Hauses begann heute."
+    "„Der Abbruch des Hauses begann heute.“"
   ],
   "tags": [
     "Nomen"

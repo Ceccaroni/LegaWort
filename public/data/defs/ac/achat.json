@@ -1,15 +1,15 @@
 {
   "wort": "Achat",
   "def_src": {
-    "pos": "noun",
+    "pos": "Nomen",
     "sense": "Varietät des Minerals Quarz"
   },
   "def_kid": null,
   "beispiele": [
-    "Der Ring ist mit Achat besetzt."
+    "„Der Ring ist mit Achat besetzt.“"
   ],
   "tags": [
-    "mineral"
+    "Nomen"
   ],
   "source": "wiktionary",
   "via": "wiktextract",

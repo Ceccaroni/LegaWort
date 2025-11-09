@@ -1,12 +1,12 @@
 {
   "wort": "Abbild",
   "def_src": {
-    "pos": "noun",
+    "pos": "Nomen",
     "sense": "darstellende Wiedergabe"
   },
   "def_kid": null,
   "beispiele": [
-    "Das Gemälde ist ein Abbild der Landschaft."
+    "„Das Gemälde ist ein Abbild der Landschaft.“"
   ],
   "tags": [
     "Nomen"

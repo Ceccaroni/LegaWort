@@ -1,12 +1,12 @@
 {
   "wort": "Abakus",
   "def_src": {
-    "pos": "noun",
+    "pos": "Nomen",
     "sense": "Rechenhilfe mit Kugeln"
   },
   "def_kid": null,
   "beispiele": [
-    "Kinder lernen das Zählen mit dem Abakus."
+    "„Kinder lernen das Zählen mit dem Abakus.“"
   ],
   "tags": [
     "Nomen"

@@ -1,14 +1,16 @@
 {
   "wort": "Ackerland",
   "def_src": {
-    "pos": "noun",
+    "pos": "Nomen",
     "sense": "für den Ackerbau genutztes Land"
   },
   "def_kid": null,
   "beispiele": [
-    "Das Ackerland erstreckt sich bis zum Horizont."
+    "„Das Ackerland erstreckt sich bis zum Horizont.“"
   ],
-  "tags": [],
+  "tags": [
+    "Nomen"
+  ],
   "source": "wiktionary",
   "via": "wiktextract",
   "license": "CC-BY-SA 4.0",

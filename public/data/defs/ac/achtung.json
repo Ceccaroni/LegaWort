@@ -1,15 +1,15 @@
 {
   "wort": "Achtung",
   "def_src": {
-    "pos": "noun",
+    "pos": "Nomen",
     "sense": "Aufmerksamkeit, Respekt"
   },
   "def_kid": null,
   "beispiele": [
-    "Achtung! Der Zug fährt ein."
+    "„Achtung! Der Zug fährt ein.“"
   ],
   "tags": [
-    "Ausruf"
+    "Nomen"
   ],
   "source": "wiktionary",
   "via": "wiktextract",
