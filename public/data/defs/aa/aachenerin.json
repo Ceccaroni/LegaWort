@@ -1,18 +1,1 @@
-{
-  "wort": "Aachenerin",
-  "def_src": {
-    "pos": "Nomen",
-    "sense": "Einwohnerin der Stadt Aachen"
-  },
-  "def_kid": null,
-  "beispiele": [
-    "Die Aachenerin erzählte von ihrer Heimat."
-  ],
-  "tags": [
-    "Nomen"
-  ],
-  "source": "wiktionary",
-  "via": "wiktextract",
-  "license": "CC-BY-SA 4.0",
-  "ts_cached": 0
-}
+{"wort":"Aachenerin","def_src":{"pos":"Nomen","sense":"A native or inhabitant of Aachen (female)"},"def_kid":null,"beispiele":[],"tags":["Nomen"],"source":"wiktionary","via":"wiktextract","license":"CC-BY-SA 4.0","ts_cached":1762797943}

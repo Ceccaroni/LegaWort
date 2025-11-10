@@ -1,18 +1,1 @@
-{
-  "wort": "aalglatt",
-  "def_src": {
-    "pos": "Adjektiv",
-    "sense": "Sehr glatt oder schwer greifbar"
-  },
-  "def_kid": null,
-  "beispiele": [
-    "Sein aalglattes Auftreten machte sie misstrauisch."
-  ],
-  "tags": [
-    "Adjektiv"
-  ],
-  "source": "wiktionary",
-  "via": "wiktextract",
-  "license": "CC-BY-SA 4.0",
-  "ts_cached": 0
-}
+{"wort":"aalglatt","def_src":{"pos":"Adjektiv","sense":"slippery; unlikely to commit oneself"},"def_kid":null,"beispiele":[],"tags":["Adjektiv"],"source":"wiktionary","via":"wiktextract","license":"CC-BY-SA 4.0","ts_cached":1762797930}

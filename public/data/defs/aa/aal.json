@@ -1,18 +1,1 @@
-{
-  "wort": "Aal",
-  "def_src": {
-    "pos": "Nomen",
-    "sense": "Langgestreckter Knochenfisch aus der Familie der Flussaale"
-  },
-  "def_kid": null,
-  "beispiele": [
-    "Der Fischer fing einen Aal."
-  ],
-  "tags": [
-    "Nomen"
-  ],
-  "source": "wiktionary",
-  "via": "wiktextract",
-  "license": "CC-BY-SA 4.0",
-  "ts_cached": 0
-}
+{"wort":"aal","def_src":{"pos":"Verb","sense":"singular imperative of aalen"},"def_kid":null,"beispiele":[],"tags":["Verb"],"source":"wiktionary","via":"wiktextract","license":"CC-BY-SA 4.0","ts_cached":1762797927}
