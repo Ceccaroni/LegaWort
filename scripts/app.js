@@ -66,6 +66,8 @@ function clearSettingsPanelVars(){
 
   ensureHyphenation();
 
+  ensureHyphenation();
+
   // Userdaten laden
   const u = localStorage.getItem('lw_user_entries');
   if(u){ try{ state.userData = JSON.parse(u); }catch(e){} }
