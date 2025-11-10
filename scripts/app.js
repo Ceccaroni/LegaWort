@@ -1,6 +1,6 @@
 // --- SAFE MODE FLAGS (HF2) ---
 window.LEGA_FLAGS = Object.assign(
-  { SAFE_MODE: true, V2_SEARCH: false, V2_RANK: false },
+  { SAFE_MODE: true, V2_SEARCH: false, V2_RANK: false, V2_MANIFEST_SEARCH: false },
   window.LEGA_FLAGS || {}
 );
 window.addEventListener("error", (e) => console.error("global error", e.message));
@@ -63,8 +63,6 @@ function clearSettingsPanelVars(){
 
   // Chunk-Index (für grosse Listen, optional)
   await ensureChunkIndex();
-
-  ensureHyphenation();
 
   ensureHyphenation();
 
