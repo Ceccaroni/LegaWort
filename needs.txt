@@ -1,0 +1,3 @@
+# Trage hier jede benötigte Definition ein (eine Zeile pro Lemma).
+# Beispiel:
+# Aachen

@@ -1,0 +1,18 @@
+{
+  "wort": "Ackerwinde",
+  "def_src": {
+    "pos": "Nomen",
+    "sense": "rankende Pflanze mit trichterförmigen Blüten"
+  },
+  "def_kid": null,
+  "beispiele": [
+    "„Die Ackerwinde überwuchert den Zaun.“"
+  ],
+  "tags": [
+    "Nomen"
+  ],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 1762616652075
+}
