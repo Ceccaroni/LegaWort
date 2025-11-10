@@ -1,3 +1,10 @@
+// am Anfang von tools/extract_defs.js:
+const {
+  toCH, norm, prefix2, nowUnix,
+  posDE, quoteDe, isGerman,
+  pickBestSense, pickExample, mapEntry
+} = require("./extract_defs_lib");
+
 // Aufruf-Beispiele:
 //   node tools/extract_defs.js --dump "/Pfad/wiktextract-de.jsonl" --manifest-root public/index
 //   node tools/extract_defs.js --dump "/Pfad/wiktextract-de.jsonl" --wordfile needs.txt
