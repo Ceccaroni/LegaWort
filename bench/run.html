@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dyslexikon – Such-Benchmark</title>
+  <base href="../" />
+  <link rel="stylesheet" href="styles/main.css" />
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .bench-shell {
+      padding: 1.5rem;
+      max-width: 960px;
+      margin: 0 auto;
+      width: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .bench-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .bench-report {
+      border: 1px solid rgba(0,0,0,0.15);
+      border-radius: 8px;
+      padding: 1rem;
+      background: rgba(255,255,255,0.85);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    }
+    .bench-report h2 {
+      margin-top: 0;
+      font-size: 1.4rem;
+    }
+    .bench-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .bench-metrics .metric {
+      padding: 0.75rem;
+      border-radius: 6px;
+      background: rgba(0,0,0,0.05);
+      text-align: center;
+    }
+    .bench-metrics .metric strong {
+      display: block;
+      font-size: 1.4rem;
+    }
+    table.bench-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+    table.bench-table thead th {
+      text-align: left;
+      border-bottom: 2px solid rgba(0,0,0,0.2);
+      padding: 0.5rem 0.4rem;
+    }
+    table.bench-table tbody td {
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      padding: 0.45rem 0.4rem;
+      vertical-align: top;
+      line-height: 1.35;
+    }
+    .bench-status {
+      font-weight: 600;
+    }
+    .bench-status.ok {
+      color: #0a7a34;
+    }
+    .bench-status.fail {
+      color: #b00020;
+    }
+    .bench-inline-note {
+      color: rgba(0,0,0,0.65);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+<header class="app-header" role="banner">
+  <div class="header-bar">
+    <h1>Dyslexikon <span class="badge">CH-DE</span></h1>
+    <div class="settings-wrapper">
+      <button id="btn-settings" class="btn btn-icon settings-toggle" type="button" aria-label="Einstellungen öffnen" aria-expanded="false" aria-controls="settings-panel">
+        <span class="burger" aria-hidden="true"></span>
+      </button>
+      <div id="settings-panel" class="settings-panel" role="region" aria-label="Einstellungen" hidden>
+        <div class="toggles">
+          <label class="switch">
+            <input id="toggle-dys" type="checkbox" />
+            <span>Dyslexie-Modus</span>
+          </label>
+          <label class="switch">
+            <input id="toggle-ruler" type="checkbox" />
+            <span>Leselineal</span>
+          </label>
+          <label class="switch">
+            <input id="toggle-contrast" type="checkbox" />
+            <span>Hoher Kontrast</span>
+          </label>
+          <label class="switch">
+            <input id="toggle-syll" type="checkbox" checked />
+            <span>Silben anzeigen</span>
+          </label>
+        </div>
+        <div class="sliders">
+          <label>
+            <span>Buchstabenabstand</span>
+            <input id="ls" type="range" min="0" max="12" step="1" value="3" />
+          </label>
+          <label>
+            <span>Zeilenhöhe</span>
+            <input id="lh" type="range" min="12" max="24" step="1" value="18" />
+          </label>
+        </div>
+        <div class="io">
+          <button id="btn-import" type="button" class="btn btn-secondary">Import</button>
+          <button id="btn-export" type="button" class="btn btn-secondary" hidden>Export</button>
+          <button id="btn-clear-user" type="button" class="btn btn-warning" title="Benutzerdaten löschen">Benutzerdaten leeren</button>
+          <input id="file" type="file" accept=".json,.csv,text/csv" hidden />
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="search-row">
+    <label for="q" class="visually-hidden">Suche</label>
+    <input id="q" class="search" type="search" placeholder="Wort suchen…" autocomplete="off" />
+    <button id="btn-mic" class="btn btn-icon mic" type="button" aria-label="Sprachsuche starten/stoppen">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span class="icon" aria-hidden="true"></span>
+    </button>
+  </div>
+</header>
+
+<main id="results" class="results" role="main" aria-live="polite"></main>
+
+<section class="learn" aria-label="Lernwörter">
+  <div class="learn-head">
+    <h2>Lernwörter <span id="learn-count" class="badge">0</span></h2>
+  </div>
+  <ol id="learn-list" class="learn-list"></ol>
+  <div class="learn-actions">
+    <button id="learn-export-csv" type="button" class="btn btn-secondary">Export CSV</button>
+    <button id="learn-export-json" type="button" class="btn btn-secondary">Export JSON</button>
+    <button id="learn-clear" type="button" class="btn btn-warning" title="Liste leeren">Leeren</button>
+  </div>
+</section>
+
+<div id="ruler" class="ruler" hidden aria-hidden="true"></div>
+
+<div class="bench-shell" role="complementary">
+  <div class="bench-report">
+    <h2>Browser-Benchmark</h2>
+    <p class="bench-inline-note">Der Benchmark nutzt dieselbe Suchlogik wie die App. Ergebnisse gelten als bestanden, wenn Recall@5 ≥ 95&nbsp;%, MRR ≥ 0,90 und P95 &lt; 150&nbsp;ms.</p>
+    <div class="bench-actions">
+      <button id="bench-run" class="btn btn-primary" type="button">Benchmark starten</button>
+      <button id="bench-warm" class="btn" type="button">Nur Aufwärmen</button>
+      <span id="bench-status" class="bench-status" aria-live="polite"></span>
+    </div>
+    <div id="bench-metrics" class="bench-metrics" aria-live="polite"></div>
+  </div>
+  <div class="bench-report">
+    <h2>Details</h2>
+    <div class="bench-inline-note">Top-5-Treffer und Latenzen für jeden Goldfall.</div>
+    <div class="bench-table-wrap">
+      <table class="bench-table" id="bench-table">
+        <thead>
+          <tr>
+            <th>Query</th>
+            <th>Erwartet</th>
+            <th>Treffer (Top&nbsp;5)</th>
+            <th>Rang</th>
+            <th>Latenz (ms)</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<footer class="app-footer" role="contentinfo">
+  <p>Benchmark-Ausgabe – nutzt dieselbe App-Logik im isolierten Modus.</p>
+  <p><a href="README.md">Hinweise</a> · <a href="LICENSE">Lizenz</a> · <a href="public/attribution.html">Attribution</a></p>
+</footer>
+
+<script src="shared/hyphenation.js"></script>
+<script src="scripts/app.js"></script>
+<script type="module" src="bench/run.js"></script>
+<script type="module" src="/LegaWort/web/scripts/wortdb.shim.js"></script>
+</body>
+</html>
