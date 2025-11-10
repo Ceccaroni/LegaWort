@@ -1,18 +1,1 @@
-{
-  "wort": "Ackerbau",
-  "def_src": {
-    "pos": "Nomen",
-    "sense": "Bewirtschaftung von Feldern"
-  },
-  "def_kid": null,
-  "beispiele": [
-    "„Der Ackerbau prägt die Landschaft.“"
-  ],
-  "tags": [
-    "Nomen"
-  ],
-  "source": "wiktionary",
-  "via": "wiktextract",
-  "license": "CC-BY-SA 4.0",
-  "ts_cached": 1762616652072
-}
+{"wort":"Ackerbau","def_src":{"pos":"Nomen","sense":"cultivation of arable land; agriculture (in the stricter sense)"},"def_kid":null,"beispiele":[],"tags":["Nomen"],"source":"wiktionary","via":"wiktextract","license":"CC-BY-SA 4.0","ts_cached":1762797938}

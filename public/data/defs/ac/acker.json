@@ -1,18 +1,1 @@
-{
-  "wort": "Acker",
-  "def_src": {
-    "pos": "Nomen",
-    "sense": "bestelltes Feld"
-  },
-  "def_kid": null,
-  "beispiele": [
-    "„Der Acker ist frisch gepflügt.“"
-  ],
-  "tags": [
-    "Nomen"
-  ],
-  "source": "wiktionary",
-  "via": "wiktextract",
-  "license": "CC-BY-SA 4.0",
-  "ts_cached": 1762616652073
-}
+{"wort":"acker","def_src":{"pos":"Verb","sense":"inflection of ackern:"},"def_kid":null,"beispiele":[],"tags":["Verb"],"source":"wiktionary","via":"wiktextract","license":"CC-BY-SA 4.0","ts_cached":1762797928}
