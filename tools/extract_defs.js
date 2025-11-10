@@ -14,6 +14,13 @@ function norm(s){
 function prefix2(w){ const k = norm(w); return (k[0]||"_") + (k[1]||"_"); }
 function nowUnix(){ return Math.floor(Date.now()/1000); }
 
+/** Basename für Dateien hart absichern (keine Slashes, nur a–z0–9 und '-') */
+function safeBase(w){
+  const k = norm(w);
+  const b = k.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g,"");
+  return b || "_";
+}
+
 /**
  * POS-Erkennung strikt auf:
  * - Nomen
@@ -181,7 +188,7 @@ if (wanted.size === 0){
 function outPathFor(w){
   const pref = prefix2(w);
   const dir  = path.join(OUT_ROOT, pref);
-  const file = path.join(dir, `${norm(w)}.json`);
+  const file = path.join(dir, `${safeBase(w)}.json`); // <- sanitised filename
   return { dir, file };
 }
 function writeOnceIfNew(w, mapped, stats){
