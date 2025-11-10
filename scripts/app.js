@@ -658,6 +658,56 @@ async function ensureChunkIndex(){
   return chunkIndexState.promise;
 }
 
+async function collectCandidatesFromManifestsV2(queryNorm, prefixes){
+  if(!window.ManifestV2 || !Array.isArray(prefixes) || !prefixes.length){
+    return [];
+  }
+  try{
+    const lists = await Promise.all(prefixes.map(pref => {
+      if(!pref || typeof pref !== 'string'){ return Promise.resolve([]); }
+      return window.ManifestV2.loadManifestV2(pref).catch(() => []);
+    }));
+    const dedup = new Set();
+    for(const list of lists){
+      if(!Array.isArray(list)) continue;
+      for(const item of list){
+        if(typeof item !== 'string') continue;
+        const normalized = item.trim();
+        if(normalized){
+          dedup.add(normalized);
+        }
+      }
+    }
+    return Array.from(dedup);
+  }catch(err){
+    console.error('collectCandidatesFromManifestsV2 failed', err);
+    return [];
+  }
+}
+
+async function searchV2EntryPoint(queryNorm, prefixes, rankFn){
+  let candidates = [];
+  if(window.LEGA_FLAGS?.V2_MANIFEST_SEARCH && Array.isArray(prefixes) && prefixes.length){
+    try{
+      const lemmas = await collectCandidatesFromManifestsV2(queryNorm, prefixes);
+      if(Array.isArray(lemmas) && lemmas.length){
+        if(typeof rankFn === 'function'){
+          candidates = rankFn(lemmas, queryNorm) || [];
+        }else{
+          candidates = lemmas.slice();
+        }
+      }
+    }catch(err){
+      console.error('V2 manifest search failed, falling back', err);
+      candidates = [];
+    }
+  }
+  if(!Array.isArray(candidates)){
+    return [];
+  }
+  return candidates;
+}
+
 function doSearch(input){
   runSearch(input);
 }
@@ -672,6 +722,98 @@ async function runSearch(input){
     render([]);
     return;
   }
+  return out;
+}
+
+function positionWeight(index){
+  return index <= 2 ? 2 : 1;
+}
+
+function insertionCost(index){
+  return positionWeight(index);
+}
+
+function deletionCost(index){
+  return positionWeight(index);
+}
+
+function computeScoreV2(metrics){
+  if(!metrics || typeof metrics !== 'object') return 0;
+  const prefix = Number.isFinite(metrics.prefixScore) ? metrics.prefixScore : 0;
+  const phon = Number.isFinite(metrics.phonScore) ? metrics.phonScore : 0;
+  const wdl = Number.isFinite(metrics.weightedDL) ? metrics.weightedDL : 0;
+  const freq = Number.isFinite(metrics.freq) && metrics.freq > 0 ? metrics.freq : 0;
+  const lenDelta = Number.isFinite(metrics.lenDelta) ? metrics.lenDelta : 0;
+  const freqTerm = freq > 0 ? (Math.log1p ? Math.log1p(freq) : Math.log(1 + freq)) : 0;
+  return (3 * prefix) + (2.5 * phon) + (2 * wdl) + (0.8 * freqTerm) - (0.3 * Math.abs(lenDelta));
+}
+
+function rankV2(candidates, query){
+  if(!Array.isArray(candidates) || !candidates.length) return candidates || [];
+  const q = typeof query === 'string' ? query : '';
+  const qLen = q.length;
+  const qPhon = phonKeyV2(q);
+  const scored = candidates.map(entry => {
+    const key = entryKey(entry);
+    const len = key.length;
+    const prefixLen = q && key ? longestCommonPrefix(key, q) : 0;
+    const prefixScore = qLen ? prefixLen / qLen : 0;
+    const candidatePhon = typeof entry.phon === 'string' ? entry.phon : '';
+    const phonScore = qPhon && candidatePhon && qPhon === candidatePhon ? 1 : 0;
+    const legacyPhonScore = typeof entry._dlScore === 'number' ? entry._dlScore : 0;
+    const weightedDL = typeof entry._wdl === 'number' ? entry._wdl : legacyPhonScore;
+    const freq = Number.isFinite(entry._freqHint) ? entry._freqHint : getEntryFrequency(entry);
+    const lenDelta = Number.isFinite(entry._lenDelta) ? entry._lenDelta : (len - qLen);
+    const score = computeScoreV2({
+      prefixScore,
+      phonScore,
+      weightedDL,
+      freq,
+      lenDelta
+    });
+    entry._rankV2 = score;
+    entry._prefixScore = prefixScore;
+    entry._phonScore = phonScore;
+    entry._phonKey = candidatePhon;
+    entry._freqHint = freq;
+    entry._len = len;
+    entry._lenDelta = lenDelta;
+    return {
+      entry,
+      score,
+      dist: Number.isFinite(entry._dist) ? entry._dist : Number.isFinite(entry._dlDist) ? entry._dlDist : Infinity,
+      freq,
+      len
+    };
+  });
+
+  scored.sort((a, b) => {
+    if(a.score !== b.score) return b.score - a.score;
+    if(a.dist !== b.dist) return a.dist - b.dist;
+    if(a.freq !== b.freq) return b.freq - a.freq;
+    if(a.len !== b.len) return a.len - b.len;
+    const aw = String(a.entry.wort || '');
+    const bw = String(b.entry.wort || '');
+    return aw.localeCompare(bw, 'de');
+  });
+
+  return scored.map(item => item.entry);
+}
+
+function longestCommonPrefix(a, b){
+  const len = Math.min(a.length, b.length);
+  let i = 0;
+  while(i < len && a[i] === b[i]) i += 1;
+  return i;
+}
+
+function substitutionCostV2(aToken, bToken, index){
+  if(aToken === bToken) return 0;
+  const key = `${aToken}|${bToken}`;
+  const cost = WDL_SUB_COSTS_V2.get(key);
+  const base = typeof cost === 'number' ? cost : 1;
+  return base * positionWeight(index);
+}
 
   const prefixLen = Math.max(1, state.chunkPrefixLen || 2);
   let bucketInfoV2 = { basePrefix: '', fallbackPrefixes: [] };
@@ -696,6 +838,45 @@ async function runSearch(input){
 
   const patterns = new Set([primaryQuery]);
   if(q && q !== primaryQuery){ patterns.add(q); }
+  let manifestResults = [];
+  if(window.LEGA_FLAGS?.V2_MANIFEST_SEARCH){
+    const manifestPrefixes = [];
+    if(primaryPrefix){ manifestPrefixes.push(primaryPrefix); }
+    for(const pref of fallbackPrefixesV2){
+      if(pref){ manifestPrefixes.push(pref); }
+    }
+    const uniquePrefixes = manifestPrefixes.length ? Array.from(new Set(manifestPrefixes)) : [];
+    const manifestRankFn = (lemmas, queryKey)=>{
+      const entries = [];
+      if(!Array.isArray(lemmas) || !lemmas.length){
+        return entries;
+      }
+      for(const lemma of lemmas){
+        if(typeof lemma !== 'string') continue;
+        const wort = lemma.trim();
+        if(!wort) continue;
+        const entry = {
+          wort,
+          erklaerung: '',
+          beispiele: [],
+          tags: []
+        };
+        entry._matchKey = matchKey(wort);
+        entries.push(entry);
+        if(entries.length >= SEARCH_POOL_LIMIT) break;
+      }
+      if(!entries.length){
+        return entries;
+      }
+      const patternClone = new Set(patterns);
+      return filterMatches(entries, patternClone, queryKey).slice(0, SEARCH_MAX_RESULTS);
+    };
+    manifestResults = await searchV2EntryPoint(primaryQuery, uniquePrefixes, manifestRankFn);
+  }
+  if(Array.isArray(manifestResults) && manifestResults.length){
+    render(manifestResults.slice(0, SEARCH_MAX_RESULTS), trimmed);
+    return;
+  }
   const variantsToConsider = [];
   const seenKeys = new Map();
   const candidates = [];
@@ -725,6 +906,21 @@ async function runSearch(input){
     }
     return false;
   }
+  return dp[m][n];
+}
+
+function wdlScoreV2(dist){
+  if(typeof dist !== 'number' || !isFinite(dist)) return 0;
+  return 1 / (1 + dist);
+}
+
+function substitutionCost(aToken, bToken, index){
+  if(aToken === bToken) return 0;
+  const key = `${aToken}|${bToken}`;
+  const reverse = `${bToken}|${aToken}`;
+  const base = SUBSTITUTION_COSTS.get(key) ?? SUBSTITUTION_COSTS.get(reverse) ?? 1;
+  return base * positionWeight(index);
+}
 
   async function processPrefix(prefix){
     if(!prefix || processedPrefixes.has(prefix)) return;
