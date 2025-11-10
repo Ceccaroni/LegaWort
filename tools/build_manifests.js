@@ -1,7 +1,10 @@
-// Aufruf:
-//   node tools/build_manifests.js "/Pfad/zur/German-words-1600000-words-multilines.txt"
-// Output:
-//   public/index/<prefix>/lemmas.json  (prefix = zwei Zeichen, normalisiert)
+/**
+ * Build 26x26 Präfix-Manifeste aus einer Wortliste (eine Zeile = ein Wort).
+ * Aufruf:
+ *   node tools/build_manifests.js "/Pfad/mit Leerzeichen/German-words-1600000-words-multilines.txt"
+ * Output:
+ *   public/index/<prefix>/lemmas.json   (prefix = 2 Zeichen, normalisiert)
+ */
 
 const fs = require("fs");
 const readline = require("readline");
@@ -17,12 +20,12 @@ const OUT_DIR = "public/index";
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
 function norm(s) {
-  return s
+  return String(s)
     .normalize("NFKC")
     .toLowerCase()
     .replace(/ß/g, "ss")
     .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue")
-    .replace(/[^a-z0-9]/g, ""); // nur a–z0–9
+    .replace(/[^a-z0-9]/g, ""); // nur a–z0–9 für Lemma-Index
 }
 function prefixOf(k) {
   const a = k[0] || "_";
@@ -31,10 +34,12 @@ function prefixOf(k) {
 }
 
 const buckets = new Map(); // "aa" -> Set()
+
 function add(prefix, lemma) {
   if (!prefix || !lemma) return;
-  if (!buckets.has(prefix)) buckets.set(prefix, new Set());
-  buckets.get(prefix).add(lemma);
+  let set = buckets.get(prefix);
+  if (!set) { set = new Set(); buckets.set(prefix, set); }
+  set.add(lemma);
 }
 
 const rl = readline.createInterface({
@@ -42,18 +47,21 @@ const rl = readline.createInterface({
 });
 
 let n = 0;
+
 rl.on("line", (line) => {
   let raw = (line || "").trim();
-  if (!raw || raw === "[" || raw === "]") return;
-  // Zeilen wie `"Wort",` säubern
-  raw = raw.replace(/^"+|"+$/g, "").replace(/,$/, "");
+  if (!raw || raw === "[" || raw === "]") return;          // JSON-Array-Klammern ignorieren
+  raw = raw.replace(/^"+|"+$/g, "").replace(/,$/, "");     // Zeilen wie "Wort", säubern
   if (!raw) return;
 
   const k = norm(raw);
   if (!k) return;
+
   add(prefixOf(k), k);
 
-  if ((++n % 100000) === 0) process.stdout.write(`\rVerarbeitet: ${n.toLocaleString("de-CH")} Zeilen…`);
+  if ((++n % 100000) === 0) {
+    process.stdout.write(`\rVerarbeitet: ${n.toLocaleString("de-CH")} Zeilen…`);
+  }
 });
 
 rl.on("close", () => {
@@ -64,5 +72,5 @@ rl.on("close", () => {
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "lemmas.json"), JSON.stringify(arr), "utf8");
   }
-  console.log(`Fertig. Ordner '${OUT_DIR}/<prefix>/lemmas.json' erstellt.`);
+  console.log("Fertig. Ordner 'public/index/<prefix>/lemmas.json' erstellt.");
 });
