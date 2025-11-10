@@ -34,6 +34,7 @@ const resultsEl = $('#results');
 const rulerEl = $('#ruler');
 const hyphenationState = { compiled: null, promise: null };
 const chunkIndexState = { promise: null };
+const DEF_NEEDS_STORAGE_KEY = 'lw_def_needs';
 const SETTINGS_PANEL_VARS = [
   '--settings-panel-top',
   '--settings-panel-left',
@@ -722,98 +723,6 @@ async function runSearch(input){
     render([]);
     return;
   }
-  return out;
-}
-
-function positionWeight(index){
-  return index <= 2 ? 2 : 1;
-}
-
-function insertionCost(index){
-  return positionWeight(index);
-}
-
-function deletionCost(index){
-  return positionWeight(index);
-}
-
-function computeScoreV2(metrics){
-  if(!metrics || typeof metrics !== 'object') return 0;
-  const prefix = Number.isFinite(metrics.prefixScore) ? metrics.prefixScore : 0;
-  const phon = Number.isFinite(metrics.phonScore) ? metrics.phonScore : 0;
-  const wdl = Number.isFinite(metrics.weightedDL) ? metrics.weightedDL : 0;
-  const freq = Number.isFinite(metrics.freq) && metrics.freq > 0 ? metrics.freq : 0;
-  const lenDelta = Number.isFinite(metrics.lenDelta) ? metrics.lenDelta : 0;
-  const freqTerm = freq > 0 ? (Math.log1p ? Math.log1p(freq) : Math.log(1 + freq)) : 0;
-  return (3 * prefix) + (2.5 * phon) + (2 * wdl) + (0.8 * freqTerm) - (0.3 * Math.abs(lenDelta));
-}
-
-function rankV2(candidates, query){
-  if(!Array.isArray(candidates) || !candidates.length) return candidates || [];
-  const q = typeof query === 'string' ? query : '';
-  const qLen = q.length;
-  const qPhon = phonKeyV2(q);
-  const scored = candidates.map(entry => {
-    const key = entryKey(entry);
-    const len = key.length;
-    const prefixLen = q && key ? longestCommonPrefix(key, q) : 0;
-    const prefixScore = qLen ? prefixLen / qLen : 0;
-    const candidatePhon = typeof entry.phon === 'string' ? entry.phon : '';
-    const phonScore = qPhon && candidatePhon && qPhon === candidatePhon ? 1 : 0;
-    const legacyPhonScore = typeof entry._dlScore === 'number' ? entry._dlScore : 0;
-    const weightedDL = typeof entry._wdl === 'number' ? entry._wdl : legacyPhonScore;
-    const freq = Number.isFinite(entry._freqHint) ? entry._freqHint : getEntryFrequency(entry);
-    const lenDelta = Number.isFinite(entry._lenDelta) ? entry._lenDelta : (len - qLen);
-    const score = computeScoreV2({
-      prefixScore,
-      phonScore,
-      weightedDL,
-      freq,
-      lenDelta
-    });
-    entry._rankV2 = score;
-    entry._prefixScore = prefixScore;
-    entry._phonScore = phonScore;
-    entry._phonKey = candidatePhon;
-    entry._freqHint = freq;
-    entry._len = len;
-    entry._lenDelta = lenDelta;
-    return {
-      entry,
-      score,
-      dist: Number.isFinite(entry._dist) ? entry._dist : Number.isFinite(entry._dlDist) ? entry._dlDist : Infinity,
-      freq,
-      len
-    };
-  });
-
-  scored.sort((a, b) => {
-    if(a.score !== b.score) return b.score - a.score;
-    if(a.dist !== b.dist) return a.dist - b.dist;
-    if(a.freq !== b.freq) return b.freq - a.freq;
-    if(a.len !== b.len) return a.len - b.len;
-    const aw = String(a.entry.wort || '');
-    const bw = String(b.entry.wort || '');
-    return aw.localeCompare(bw, 'de');
-  });
-
-  return scored.map(item => item.entry);
-}
-
-function longestCommonPrefix(a, b){
-  const len = Math.min(a.length, b.length);
-  let i = 0;
-  while(i < len && a[i] === b[i]) i += 1;
-  return i;
-}
-
-function substitutionCostV2(aToken, bToken, index){
-  if(aToken === bToken) return 0;
-  const key = `${aToken}|${bToken}`;
-  const cost = WDL_SUB_COSTS_V2.get(key);
-  const base = typeof cost === 'number' ? cost : 1;
-  return base * positionWeight(index);
-}
 
   const prefixLen = Math.max(1, state.chunkPrefixLen || 2);
   let bucketInfoV2 = { basePrefix: '', fallbackPrefixes: [] };
@@ -906,21 +815,6 @@ function substitutionCostV2(aToken, bToken, index){
     }
     return false;
   }
-  return dp[m][n];
-}
-
-function wdlScoreV2(dist){
-  if(typeof dist !== 'number' || !isFinite(dist)) return 0;
-  return 1 / (1 + dist);
-}
-
-function substitutionCost(aToken, bToken, index){
-  if(aToken === bToken) return 0;
-  const key = `${aToken}|${bToken}`;
-  const reverse = `${bToken}|${aToken}`;
-  const base = SUBSTITUTION_COSTS.get(key) ?? SUBSTITUTION_COSTS.get(reverse) ?? 1;
-  return base * positionWeight(index);
-}
 
   async function processPrefix(prefix){
     if(!prefix || processedPrefixes.has(prefix)) return;
@@ -1400,7 +1294,25 @@ function renderCard(entry, query){
     }
   }
   const tags = tagLabels.map(t=>`<span class="tag">${highlightHeadV2(t, query)}</span>`).join(' ');
-  const def = esc(displayDefinitionV2(entry));
+  const definitionText = displayDefinitionV2(entry);
+  const hasDefinition = !!(definitionText && definitionText.trim());
+  const isLoadingDefinition = entry._defLoading && !entry._needsDefinition && !hasDefinition;
+  const needsDefinition = !!entry._needsDefinition || (!hasDefinition && !isLoadingDefinition);
+  const defClass = ['definition', isLoadingDefinition ? 'loading' : '', needsDefinition ? 'missing' : '']
+    .filter(Boolean)
+    .join(' ');
+  let defMarkup;
+  if(isLoadingDefinition){
+    defMarkup = '<span class="definition-loading">Definition wird geladen …</span>';
+  }else if(needsDefinition){
+    const safeWord = esc(entry.wort || '');
+    defMarkup = `
+      <span class="definition-placeholder">Definition noch nicht importiert.</span>
+      <button type="button" class="request-def" data-act="request-def" data-word="${safeWord}">Definition laden</button>
+    `;
+  }else{
+    defMarkup = esc(definitionText);
+  }
   const exampleText = quoteExampleV2(entry.beispiele && entry.beispiele[0]);
   const ex = exampleText ? `<div class="example">${esc(exampleText)}</div>` : '';
 
@@ -1410,7 +1322,7 @@ function renderCard(entry, query){
       <span class="syll">${state.showSyll ? syllMarkup : ''}</span>
       ${tags}
     </div>
-    <div class="definition">${def}</div>
+    <div class="${defClass}">${defMarkup}</div>
     ${ex}
     <div class="actions">
       <button aria-label="Wort vorlesen" data-act="speak-word">Wort vorlesen</button>
@@ -1426,6 +1338,7 @@ function renderCard(entry, query){
       if(act==='speak-word') speak(entry.wort);
       else if(act==='speak-def') speak(entry.erklaerung||entry.wort);
       else if(act==='learn') addLearn(entry.wort);
+      else if(act==='request-def') requestDefinitionLoad(entry.wort, ev.currentTarget);
     });
   });
 
@@ -1437,6 +1350,7 @@ function hydrateDefinitionForCard(card, entry, query){
   if(!card || !entry) return;
   if(entry._defResolved) return;
   if(entry.erklaerung && entry.erklaerung.trim()){
+    entry._needsDefinition = false;
     entry._defResolved = true;
     return;
   }
@@ -1446,6 +1360,13 @@ function hydrateDefinitionForCard(card, entry, query){
     : null;
   if(!api) return;
   entry._defLoading = true;
+  entry._needsDefinition = false;
+  const defEl = card.querySelector('.definition');
+  if(defEl){
+    defEl.classList.remove('missing');
+    defEl.classList.add('loading');
+    defEl.innerHTML = '<span class="definition-loading">Definition wird geladen …</span>';
+  }
   card.dataset.word = entry.wort;
   api(entry.wort).then(def => {
     entry._defLoading = false;
@@ -1467,6 +1388,7 @@ function hydrateDefinitionForCard(card, entry, query){
     }
     if(resolvedDef){
       entry.erklaerung = stripLeadingPosLabel(resolvedDef);
+      entry._needsDefinition = false;
     }
     if(Array.isArray(def.beispiele) && def.beispiele.length){
       entry.beispiele = def.beispiele.slice();
@@ -1478,6 +1400,9 @@ function hydrateDefinitionForCard(card, entry, query){
     if(Array.isArray(def.silben) && def.silben.length){
       entry.silben = def.silben.map(part => String(part)).filter(Boolean);
     }
+    if(!entry.erklaerung || !entry.erklaerung.trim() || def.source === 'none'){
+      entry._needsDefinition = true;
+    }
     if(!card.isConnected) return;
     if(card.dataset.word !== entry.wort) return;
     const fresh = renderCard(entry, query);
@@ -1485,8 +1410,49 @@ function hydrateDefinitionForCard(card, entry, query){
   }).catch(err => {
     entry._defLoading = false;
     entry._defResolved = true;
+    entry._needsDefinition = true;
     console.warn('def fetch failed', entry.wort, err);
   });
+}
+
+async function requestDefinitionLoad(word, button){
+  if(!word) return;
+  const trimmed = String(word).trim();
+  if(!trimmed) return;
+  let existing = [];
+  try {
+    const raw = localStorage.getItem(DEF_NEEDS_STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(Array.isArray(parsed)) existing = parsed.filter(Boolean);
+    }
+  } catch(err){}
+  if(!existing.includes(trimmed)){
+    existing.push(trimmed);
+    try {
+      localStorage.setItem(DEF_NEEDS_STORAGE_KEY, JSON.stringify(existing));
+    } catch(err){}
+  }
+  let copied = false;
+  if(typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function'){
+    try {
+      await navigator.clipboard.writeText(`${trimmed}\n`);
+      copied = true;
+    } catch(err){}
+  }
+  if(button){
+    button.disabled = true;
+    button.classList.add('requested');
+    button.textContent = copied ? 'needs.txt kopiert' : 'Definition vorgemerkt';
+  }
+  console.info('needs.txt ->', trimmed);
+  if(!copied){
+    if(typeof alert === 'function'){
+      alert(`Bitte "${trimmed}" in needs.txt eintragen und das Extrakt-Skript ausführen (siehe README).`);
+    }else{
+      console.warn('Bitte in needs.txt eintragen:', trimmed);
+    }
+  }
 }
 
 function highlightHeadV2(text, query){

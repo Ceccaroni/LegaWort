@@ -50,6 +50,16 @@ Schema:
 ```
 Attribution: `public/attribution.html`
 
+### Definitionen nachladen (lokal)
+1) Wort in `needs.txt` eintragen (eine Zeile pro Wort, Gross-/Kleinschreibung wie Lemma).
+2) Skript ausführen:
+   `node tools/extract_defs.js --dump "/Pfad/wiktextract-de.jsonl" --wordfile needs.txt`
+3) Änderungen übernehmen:
+   `git add public/data/defs`
+   `git commit -m "feat(defs): add selected defs from wiktextract"`
+   `git push`
+4) GitHub Pages neu laden.
+
 ### CSV-Import
 Spalten-Köpfe: `wort;erklaerung;silben;beispiele;tags`  
 - `silben`: mit `-` oder `·` trennen, z. B. `Ap-fel`.  
