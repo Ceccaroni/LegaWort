@@ -13,21 +13,52 @@ function norm(s){
 }
 function prefix2(w){ const k = norm(w); return (k[0]||"_") + (k[1]||"_"); }
 function nowUnix(){ return Math.floor(Date.now()/1000); }
+
+/**
+ * POS-Erkennung strikt auf:
+ * - Nomen
+ * - Verb
+ * - Adjektiv
+ * - Pronomen
+ * - Partikel  (einschliesslich: adverb, adposition/präposition, conjunction, interjection,
+ *              sowie particle: modal/focus/degree/negative)
+ * Alles andere -> "" (kein POS, keine Tags).
+ */
 function posDE(p, tags){
-  const x = String(p||"").toLowerCase();
-  if (x.includes("proper")) return "Eigenname";
+  const x = String(p || "").toLowerCase();
+  const t = Array.isArray(tags) ? tags.map(s => String(s||"").toLowerCase()) : [];
+
+  // Nomen / Verb / Adjektiv
   if (x.startsWith("noun")) return "Nomen";
   if (x.startsWith("verb")) return "Verb";
   if (x.startsWith("adj") || x.startsWith("adjective")) return "Adjektiv";
-  if (x.startsWith("adv") || x.startsWith("adverb")) return "Adverb";
-  const t = Array.isArray(tags) ? tags.map(s=>String(s||"").toLowerCase()) : [];
-  if (t.some(s => /proper_noun|proper-noun|proper/.test(s))) return "Eigenname";
   if (t.some(s => /^noun/.test(s))) return "Nomen";
   if (t.some(s => /^verb/.test(s))) return "Verb";
   if (t.some(s => /^adj|^adjective/.test(s))) return "Adjektiv";
-  if (t.some(s => /^adv|^adverb/.test(s))) return "Adverb";
+
+  // Pronomen
+  if (x.startsWith("pron")) return "Pronomen";
+  if (t.some(s => /(^|[^a-z])pron(oun)?( |$)/.test(s))) return "Pronomen";
+  if (t.some(s => /(personal|possessive|demonstrative|relative|interrogative|reflexive|indefinite|reciprocal)[ _-]?pronoun/.test(s))) {
+    return "Pronomen";
+  }
+
+  // Partikel (breit gefasst)
+  if (x.includes("particle")) return "Partikel";
+  if (t.some(s => /(modal|focus|degree|negative)[ _-]?particle/.test(s))) return "Partikel";
+  if (x.startsWith("adv") || x.startsWith("adverb")) return "Partikel";
+  if (t.some(s => /^adv|^adverb/.test(s))) return "Partikel";
+  if (x.startsWith("prep") || x.includes("adposition") || t.some(s => /(^|_)adp($|_)/.test(s))) return "Partikel"; // Präpositionen
+  if (t.some(s => /^prep|adposition/.test(s))) return "Partikel";
+  if (x.startsWith("conj")) return "Partikel";      // Konjunktionen
+  if (t.some(s => /^conj/.test(s))) return "Partikel";
+  if (x.startsWith("interj")) return "Partikel";    // Interjektionen
+  if (t.some(s => /^interj/.test(s))) return "Partikel";
+
+  // Alles andere ignorieren
   return "";
 }
+
 function quoteDe(s){
   if(!s) return "";
   const t = String(s).trim().replace(/^["“”'«»]+|["“”'«»]+$/g,"");
@@ -71,7 +102,7 @@ function mapEntry(obj){
     def_src: { pos, sense },
     def_kid: null,
     beispiele: beisp ? [quoteDe(beisp)] : [],
-    tags: pos ? [pos] : [],
+    tags: pos ? [pos] : [],           // nur Tag, wenn POS in der erlaubten Menge
     source: "wiktionary",
     via: "wiktextract",
     license: "CC-BY-SA 4.0",
@@ -156,4 +187,70 @@ function outPathFor(w){
 function writeOnceIfNew(w, mapped, stats){
   const { dir, file } = outPathFor(w);
   ensureDir(dir);
-  if (!overwrite &
+  if (!overwrite && fs.existsSync(file)) {
+    process.stdout.write(`= existiert: ${file}\n`);
+    stats.existed++;
+    return false;
+  }
+  fs.writeFileSync(file, JSON.stringify(mapped), "utf8");
+  process.stdout.write(`+ ${file}\n`);
+  stats.written++;
+  return true;
+}
+
+/* ---------- Stream öffnen (JSONL oder GZip) ---------- */
+function dumpStream(p){
+  const rs = fs.createReadStream(p);
+  if (p.endsWith(".gz")) return rs.pipe(zlib.createGunzip());
+  return rs;
+}
+
+/* ---------- Hauptlauf ---------- */
+(async function main(){
+  const foundNorm = new Set();
+  const stats = { written:0, existed:0, skippedLang:0, read:0 };
+
+  const rl = readline.createInterface({ input: dumpStream(dumpPath), crlfDelay: Infinity });
+
+  for await (const line of rl) {
+    if (stats.written >= maxOut) break;
+    if (wanted.size === 0) break;
+    if (!line || !line.trim()) continue;
+
+    let obj;
+    try { obj = JSON.parse(line); } catch { continue; }
+    stats.read++;
+
+    if (!isGerman(obj)) { stats.skippedLang++; continue; }
+
+    const w = obj.word;
+    if (!w) continue;
+
+    const key = norm(w);
+    if (!wanted.has(key)) continue;
+    if (foundNorm.has(key)) continue;
+
+    const mapped = mapEntry(obj);
+
+    const origSet = wanted.get(key);
+    const repr = origSet ? Array.from(origSet)[0] : w;
+
+    if (writeOnceIfNew(repr, mapped, stats)) {
+      foundNorm.add(key);
+    }
+
+    wanted.delete(key);
+  }
+
+  const notFound = Array.from(wanted.keys()).flatMap(k => Array.from(wanted.get(k) || []));
+  if (notFound.length){
+    console.error("Nicht gefunden:", notFound.join(", "));
+  }
+
+  console.log(`\nFertig.
+Gelesene Zeilen: ${stats.read}
+Geschrieben:     ${stats.written}
+Übersprungen (Sprache≠DE): ${stats.skippedLang}
+Bereits vorhanden: ${stats.existed}
+Offen (nicht gefunden): ${notFound.length}\n`);
+})();
