@@ -1,18 +1,1 @@
-{
-  "wort": "Abart",
-  "def_src": {
-    "pos": "Nomen",
-    "sense": "Variante einer Art"
-  },
-  "def_kid": null,
-  "beispiele": [
-    "„Diese Abart der Pflanze ist besonders robust.“"
-  ],
-  "tags": [
-    "Nomen"
-  ],
-  "source": "wiktionary",
-  "via": "wiktextract",
-  "license": "CC-BY-SA 4.0",
-  "ts_cached": 1762616304283
-}
+{"wort":"Abart","def_src":{"pos":"Nomen","sense":"degenerate or deviation"},"def_kid":null,"beispiele":[],"tags":["Nomen"],"source":"wiktionary","via":"wiktextract","license":"CC-BY-SA 4.0","ts_cached":1762797927}
