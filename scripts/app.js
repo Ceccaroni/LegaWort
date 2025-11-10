@@ -33,6 +33,7 @@ const $ = sel => document.querySelector(sel);
 const resultsEl = $('#results');
 const rulerEl = $('#ruler');
 const hyphenationState = { compiled: null, promise: null };
+const chunkIndexState = { promise: null };
 const SETTINGS_PANEL_VARS = [
   '--settings-panel-top',
   '--settings-panel-left',
@@ -61,17 +62,9 @@ function clearSettingsPanelVars(){
   }
 
   // Chunk-Index (für grosse Listen, optional)
-  try{
-    const ci = await fetch('data/_chunks/index.json');
-    if(ci.ok){
-      state.chunkIndex = await ci.json(); // {prefixLen, prefixes:{..}}
-      if(typeof state.chunkIndex.prefixLen === 'number'){
-        state.chunkPrefixLen = state.chunkIndex.prefixLen;
-      }
-    }
-  }catch(e){
-    // kein Chunk-Betrieb aktiv – OK
-  }
+  await ensureChunkIndex();
+
+  ensureHyphenation();
 
   ensureHyphenation();
 
@@ -601,6 +594,7 @@ function replaceAtStart(str, from, to, limit){
 }
 
 async function ensureChunk(prefix){
+  await ensureChunkIndex();
   if(!state.chunkIndex) return [];
   const p = prefix.toLowerCase();
   if(state.chunkCache.has(p)) return state.chunkCache.get(p);
@@ -630,6 +624,40 @@ async function ensureChunk(prefix){
     state.chunkCache.set(p, []);
     return [];
   }
+}
+
+async function ensureChunkIndex(){
+  if(state.chunkIndex && typeof state.chunkIndex === 'object'){
+    if(typeof state.chunkIndex.prefixLen === 'number'){
+      state.chunkPrefixLen = state.chunkIndex.prefixLen;
+    }
+    return state.chunkIndex;
+  }
+  if(chunkIndexState.promise){
+    return chunkIndexState.promise;
+  }
+  chunkIndexState.promise = fetch('data/_chunks/index.json')
+    .then(res => {
+      if(!res.ok) throw new Error(`chunk index ${res.status}`);
+      return res.json();
+    })
+    .then(obj => {
+      if(obj && typeof obj === 'object'){
+        state.chunkIndex = obj;
+        if(typeof obj.prefixLen === 'number'){
+          state.chunkPrefixLen = obj.prefixLen;
+        }
+      }
+      return state.chunkIndex;
+    })
+    .catch(err => {
+      console.warn('Chunk-Index nicht verfügbar', err);
+      return state.chunkIndex;
+    })
+    .finally(() => {
+      chunkIndexState.promise = null;
+    });
+  return chunkIndexState.promise;
 }
 
 function doSearch(input){
@@ -706,6 +734,7 @@ async function runSearch(input){
 
     if(addFromSource(state.userData, prefix, true)) return;
 
+    await ensureChunkIndex();
     if(state.chunkIndex){
       const chunkEntries = await ensureChunk(prefix);
       for(const entry of chunkEntries){
@@ -740,12 +769,6 @@ async function runSearch(input){
       if(results.length >= SEARCH_MIN_PRIMARY) break;
     }
   }
-  return out;
-}
-
-function positionWeight(index){
-  return index <= 2 ? 2 : 1;
-}
 
   if(results.length < SEARCH_MIN_PRIMARY){
     const variantSet = expandAnlautVariants(primaryQuery);
@@ -770,13 +793,6 @@ function positionWeight(index){
       if(results.length >= SEARCH_MIN_PRIMARY) break;
     }
   }
-  return dp[m][n];
-}
-
-function wdlScoreV2(dist){
-  if(typeof dist !== 'number' || !isFinite(dist)) return 0;
-  return 1 / (1 + dist);
-}
 
   render(results.slice(0, SEARCH_MAX_RESULTS), trimmed);
 }
