@@ -1,18 +1,1 @@
-{
-  "wort": "Achsel",
-  "def_src": {
-    "pos": "Nomen",
-    "sense": "Bereich unter dem Arm"
-  },
-  "def_kid": null,
-  "beispiele": [
-    "„Sie hat sich die Achsel verletzt.“"
-  ],
-  "tags": [
-    "Nomen"
-  ],
-  "source": "wiktionary",
-  "via": "wiktextract",
-  "license": "CC-BY-SA 4.0",
-  "ts_cached": 1762616652063
-}
+{"wort":"Achsel","def_src":{"pos":"Nomen","sense":"armpit, axilla (cavity under the shoulder)"},"def_kid":null,"beispiele":[],"tags":["Nomen"],"source":"wiktionary","via":"wiktextract","license":"CC-BY-SA 4.0","ts_cached":1762797929}

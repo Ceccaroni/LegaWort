@@ -1,18 +1,1 @@
-{
-  "wort": "Abenteurer",
-  "def_src": {
-    "pos": "Nomen",
-    "sense": "Person, die Abenteuer sucht"
-  },
-  "def_kid": null,
-  "beispiele": [
-    "„Der Abenteurer bestieg den Vulkan.“"
-  ],
-  "tags": [
-    "Nomen"
-  ],
-  "source": "wiktionary",
-  "via": "wiktextract",
-  "license": "CC-BY-SA 4.0",
-  "ts_cached": 1762616304292
-}
+{"wort":"Abenteurer","def_src":{"pos":"Nomen","sense":"adventurer"},"def_kid":null,"beispiele":[],"tags":["Nomen"],"source":"wiktionary","via":"wiktextract","license":"CC-BY-SA 4.0","ts_cached":1762797928}

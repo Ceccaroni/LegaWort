@@ -1,18 +1,1 @@
-{
-  "wort": "ackern",
-  "def_src": {
-    "pos": "Verb",
-    "sense": "intensiv arbeiten oder das Feld bestellen"
-  },
-  "def_kid": null,
-  "beispiele": [
-    "„Wir ackern bis zum Sonnenuntergang.“"
-  ],
-  "tags": [
-    "Verb"
-  ],
-  "source": "wiktionary",
-  "via": "wiktextract",
-  "license": "CC-BY-SA 4.0",
-  "ts_cached": 1762616652071
-}
+{"wort":"ackern","def_src":{"pos":"Verb","sense":"to plow"},"def_kid":null,"beispiele":[],"tags":["Verb"],"source":"wiktionary","via":"wiktextract","license":"CC-BY-SA 4.0","ts_cached":1762797930}

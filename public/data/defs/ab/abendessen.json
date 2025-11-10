@@ -1,18 +1,1 @@
-{
-  "wort": "Abendessen",
-  "def_src": {
-    "pos": "Nomen",
-    "sense": "letzte Mahlzeit des Tages"
-  },
-  "def_kid": null,
-  "beispiele": [
-    "„Zum Abendessen gab es Suppe.“"
-  ],
-  "tags": [
-    "Nomen"
-  ],
-  "source": "wiktionary",
-  "via": "wiktextract",
-  "license": "CC-BY-SA 4.0",
-  "ts_cached": 1762616304290
-}
+{"wort":"abendessen","def_src":{"pos":"Verb","sense":"to sup, to have supper (the evening meal)"},"def_kid":null,"beispiele":[],"tags":["Verb"],"source":"wiktionary","via":"wiktextract","license":"CC-BY-SA 4.0","ts_cached":1762797927}

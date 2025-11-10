@@ -1,18 +1,1 @@
-{
-  "wort": "Abend",
-  "def_src": {
-    "pos": "Nomen",
-    "sense": "Tageszeit zwischen Nachmittag und Nacht"
-  },
-  "def_kid": null,
-  "beispiele": [
-    "„Am Abend sitzen wir gern zusammen.“"
-  ],
-  "tags": [
-    "Nomen"
-  ],
-  "source": "wiktionary",
-  "via": "wiktextract",
-  "license": "CC-BY-SA 4.0",
-  "ts_cached": 1762616304288
-}
+{"wort":"abend","def_src":{"pos":"Partikel","sense":"Formerly standard spelling of Abend which was deprecated in the spelling reform (Rechtschreibreform) of 1996."},"def_kid":null,"beispiele":[],"tags":["Partikel"],"source":"wiktionary","via":"wiktextract","license":"CC-BY-SA 4.0","ts_cached":1762797927}
