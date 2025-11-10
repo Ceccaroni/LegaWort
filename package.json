@@ -1,0 +1,15 @@
+{
+  "name": "legawort",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline-fähiges Wörterbuch (CH-DE) für Legasthenie",
+  "license": "UNLICENSED",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "defs:sample": "node tools/extract_defs.js --dump ./wiktionary_de.jsonl.gz --words \"Aachen,Aarau\" --max 50 --overwrite",
+    "defs:all": "node tools/extract_defs.js --dump ./wiktionary_de.jsonl.gz --manifest-root public/index --overwrite",
+    "validate": "node tools/validate_defs_schema.js",
+    "test": "npm run validate",
+    "serve": "npx http-server -p 8080 ."
+  }
+}
