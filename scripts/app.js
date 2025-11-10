@@ -1,6 +1,6 @@
 // --- SAFE MODE FLAGS (HF2) ---
 window.LEGA_FLAGS = Object.assign(
-  { SAFE_MODE: true, V2_SEARCH: false, V2_RANK: false },
+  { SAFE_MODE: true, V2_SEARCH: false, V2_RANK: false, V2_MANIFEST_SEARCH: false },
   window.LEGA_FLAGS || {}
 );
 window.addEventListener("error", (e) => console.error("global error", e.message));
@@ -34,6 +34,7 @@ const resultsEl = $('#results');
 const rulerEl = $('#ruler');
 const hyphenationState = { compiled: null, promise: null };
 const chunkIndexState = { promise: null };
+const DEF_NEEDS_STORAGE_KEY = 'lw_def_needs';
 const SETTINGS_PANEL_VARS = [
   '--settings-panel-top',
   '--settings-panel-left',
@@ -63,8 +64,6 @@ function clearSettingsPanelVars(){
 
   // Chunk-Index (für grosse Listen, optional)
   await ensureChunkIndex();
-
-  ensureHyphenation();
 
   ensureHyphenation();
 
@@ -660,6 +659,56 @@ async function ensureChunkIndex(){
   return chunkIndexState.promise;
 }
 
+async function collectCandidatesFromManifestsV2(queryNorm, prefixes){
+  if(!window.ManifestV2 || !Array.isArray(prefixes) || !prefixes.length){
+    return [];
+  }
+  try{
+    const lists = await Promise.all(prefixes.map(pref => {
+      if(!pref || typeof pref !== 'string'){ return Promise.resolve([]); }
+      return window.ManifestV2.loadManifestV2(pref).catch(() => []);
+    }));
+    const dedup = new Set();
+    for(const list of lists){
+      if(!Array.isArray(list)) continue;
+      for(const item of list){
+        if(typeof item !== 'string') continue;
+        const normalized = item.trim();
+        if(normalized){
+          dedup.add(normalized);
+        }
+      }
+    }
+    return Array.from(dedup);
+  }catch(err){
+    console.error('collectCandidatesFromManifestsV2 failed', err);
+    return [];
+  }
+}
+
+async function searchV2EntryPoint(queryNorm, prefixes, rankFn){
+  let candidates = [];
+  if(window.LEGA_FLAGS?.V2_MANIFEST_SEARCH && Array.isArray(prefixes) && prefixes.length){
+    try{
+      const lemmas = await collectCandidatesFromManifestsV2(queryNorm, prefixes);
+      if(Array.isArray(lemmas) && lemmas.length){
+        if(typeof rankFn === 'function'){
+          candidates = rankFn(lemmas, queryNorm) || [];
+        }else{
+          candidates = lemmas.slice();
+        }
+      }
+    }catch(err){
+      console.error('V2 manifest search failed, falling back', err);
+      candidates = [];
+    }
+  }
+  if(!Array.isArray(candidates)){
+    return [];
+  }
+  return candidates;
+}
+
 function doSearch(input){
   runSearch(input);
 }
@@ -698,6 +747,45 @@ async function runSearch(input){
 
   const patterns = new Set([primaryQuery]);
   if(q && q !== primaryQuery){ patterns.add(q); }
+  let manifestResults = [];
+  if(window.LEGA_FLAGS?.V2_MANIFEST_SEARCH){
+    const manifestPrefixes = [];
+    if(primaryPrefix){ manifestPrefixes.push(primaryPrefix); }
+    for(const pref of fallbackPrefixesV2){
+      if(pref){ manifestPrefixes.push(pref); }
+    }
+    const uniquePrefixes = manifestPrefixes.length ? Array.from(new Set(manifestPrefixes)) : [];
+    const manifestRankFn = (lemmas, queryKey)=>{
+      const entries = [];
+      if(!Array.isArray(lemmas) || !lemmas.length){
+        return entries;
+      }
+      for(const lemma of lemmas){
+        if(typeof lemma !== 'string') continue;
+        const wort = lemma.trim();
+        if(!wort) continue;
+        const entry = {
+          wort,
+          erklaerung: '',
+          beispiele: [],
+          tags: []
+        };
+        entry._matchKey = matchKey(wort);
+        entries.push(entry);
+        if(entries.length >= SEARCH_POOL_LIMIT) break;
+      }
+      if(!entries.length){
+        return entries;
+      }
+      const patternClone = new Set(patterns);
+      return filterMatches(entries, patternClone, queryKey).slice(0, SEARCH_MAX_RESULTS);
+    };
+    manifestResults = await searchV2EntryPoint(primaryQuery, uniquePrefixes, manifestRankFn);
+  }
+  if(Array.isArray(manifestResults) && manifestResults.length){
+    render(manifestResults.slice(0, SEARCH_MAX_RESULTS), trimmed);
+    return;
+  }
   const variantsToConsider = [];
   const seenKeys = new Map();
   const candidates = [];
@@ -1206,7 +1294,25 @@ function renderCard(entry, query){
     }
   }
   const tags = tagLabels.map(t=>`<span class="tag">${highlightHeadV2(t, query)}</span>`).join(' ');
-  const def = esc(displayDefinitionV2(entry));
+  const definitionText = displayDefinitionV2(entry);
+  const hasDefinition = !!(definitionText && definitionText.trim());
+  const isLoadingDefinition = entry._defLoading && !entry._needsDefinition && !hasDefinition;
+  const needsDefinition = !!entry._needsDefinition || (!hasDefinition && !isLoadingDefinition);
+  const defClass = ['definition', isLoadingDefinition ? 'loading' : '', needsDefinition ? 'missing' : '']
+    .filter(Boolean)
+    .join(' ');
+  let defMarkup;
+  if(isLoadingDefinition){
+    defMarkup = '<span class="definition-loading">Definition wird geladen …</span>';
+  }else if(needsDefinition){
+    const safeWord = esc(entry.wort || '');
+    defMarkup = `
+      <span class="definition-placeholder">Definition noch nicht importiert.</span>
+      <button type="button" class="request-def" data-act="request-def" data-word="${safeWord}">Definition laden</button>
+    `;
+  }else{
+    defMarkup = esc(definitionText);
+  }
   const exampleText = quoteExampleV2(entry.beispiele && entry.beispiele[0]);
   const ex = exampleText ? `<div class="example">${esc(exampleText)}</div>` : '';
 
@@ -1216,7 +1322,7 @@ function renderCard(entry, query){
       <span class="syll">${state.showSyll ? syllMarkup : ''}</span>
       ${tags}
     </div>
-    <div class="definition">${def}</div>
+    <div class="${defClass}">${defMarkup}</div>
     ${ex}
     <div class="actions">
       <button aria-label="Wort vorlesen" data-act="speak-word">Wort vorlesen</button>
@@ -1232,6 +1338,7 @@ function renderCard(entry, query){
       if(act==='speak-word') speak(entry.wort);
       else if(act==='speak-def') speak(entry.erklaerung||entry.wort);
       else if(act==='learn') addLearn(entry.wort);
+      else if(act==='request-def') requestDefinitionLoad(entry.wort, ev.currentTarget);
     });
   });
 
@@ -1243,6 +1350,7 @@ function hydrateDefinitionForCard(card, entry, query){
   if(!card || !entry) return;
   if(entry._defResolved) return;
   if(entry.erklaerung && entry.erklaerung.trim()){
+    entry._needsDefinition = false;
     entry._defResolved = true;
     return;
   }
@@ -1252,6 +1360,13 @@ function hydrateDefinitionForCard(card, entry, query){
     : null;
   if(!api) return;
   entry._defLoading = true;
+  entry._needsDefinition = false;
+  const defEl = card.querySelector('.definition');
+  if(defEl){
+    defEl.classList.remove('missing');
+    defEl.classList.add('loading');
+    defEl.innerHTML = '<span class="definition-loading">Definition wird geladen …</span>';
+  }
   card.dataset.word = entry.wort;
   api(entry.wort).then(def => {
     entry._defLoading = false;
@@ -1273,6 +1388,7 @@ function hydrateDefinitionForCard(card, entry, query){
     }
     if(resolvedDef){
       entry.erklaerung = stripLeadingPosLabel(resolvedDef);
+      entry._needsDefinition = false;
     }
     if(Array.isArray(def.beispiele) && def.beispiele.length){
       entry.beispiele = def.beispiele.slice();
@@ -1284,6 +1400,9 @@ function hydrateDefinitionForCard(card, entry, query){
     if(Array.isArray(def.silben) && def.silben.length){
       entry.silben = def.silben.map(part => String(part)).filter(Boolean);
     }
+    if(!entry.erklaerung || !entry.erklaerung.trim() || def.source === 'none'){
+      entry._needsDefinition = true;
+    }
     if(!card.isConnected) return;
     if(card.dataset.word !== entry.wort) return;
     const fresh = renderCard(entry, query);
@@ -1291,8 +1410,49 @@ function hydrateDefinitionForCard(card, entry, query){
   }).catch(err => {
     entry._defLoading = false;
     entry._defResolved = true;
+    entry._needsDefinition = true;
     console.warn('def fetch failed', entry.wort, err);
   });
+}
+
+async function requestDefinitionLoad(word, button){
+  if(!word) return;
+  const trimmed = String(word).trim();
+  if(!trimmed) return;
+  let existing = [];
+  try {
+    const raw = localStorage.getItem(DEF_NEEDS_STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(Array.isArray(parsed)) existing = parsed.filter(Boolean);
+    }
+  } catch(err){}
+  if(!existing.includes(trimmed)){
+    existing.push(trimmed);
+    try {
+      localStorage.setItem(DEF_NEEDS_STORAGE_KEY, JSON.stringify(existing));
+    } catch(err){}
+  }
+  let copied = false;
+  if(typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function'){
+    try {
+      await navigator.clipboard.writeText(`${trimmed}\n`);
+      copied = true;
+    } catch(err){}
+  }
+  if(button){
+    button.disabled = true;
+    button.classList.add('requested');
+    button.textContent = copied ? 'needs.txt kopiert' : 'Definition vorgemerkt';
+  }
+  console.info('needs.txt ->', trimmed);
+  if(!copied){
+    if(typeof alert === 'function'){
+      alert(`Bitte "${trimmed}" in needs.txt eintragen und das Extrakt-Skript ausführen (siehe README).`);
+    }else{
+      console.warn('Bitte in needs.txt eintragen:', trimmed);
+    }
+  }
 }
 
 function highlightHeadV2(text, query){

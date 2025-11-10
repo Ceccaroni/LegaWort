@@ -1,0 +1,13 @@
+name: pr-template-guard
+on: [pull_request]
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail on legacy AA checkbox
+        run: |
+          BODY="${{ github.event.pull_request.body }}"
+          if echo "$BODY" | grep -q 'aa is a regression test; do not overwrite it'; then
+            echo "Legacy PR-Text erkannt. Bitte neue Vorlage verwenden." >&2
+            exit 1
+          fi
