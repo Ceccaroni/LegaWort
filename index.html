@@ -90,11 +90,11 @@
 </footer>
 
 <script src="shared/hyphenation.js"></script>
-<script src="/LegaWort/web/scripts/manifest.v2.js"></script>
+<!-- EINMAL manifest.v2.js laden (relative Pfad reicht) -->
+<script src="web/scripts/manifest.v2.js" defer></script>
 <script src="scripts/app.js?v=104"></script>
-<script type="module" src="/LegaWort/web/scripts/wortdb.shim.js"></script>
-<!-- NEU: Redirect gebeugter Formen → Grundform -->
+<script type="module" src="web/scripts/wortdb.shim.js"></script>
+<!-- Redirect gebeugter Formen → Grundform -->
 <script src="web/forms_redirect.js"></script>
-<script src="./web/scripts/manifest.v2.js" defer></script>
 </body>
 </html>
