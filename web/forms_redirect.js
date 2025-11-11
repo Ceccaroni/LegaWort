@@ -40,7 +40,9 @@
       try{
         const def2 = await original(lemma);
         if (def2){
-          try { def2.form_of_note = `Form von „${lemma}“ (Eingabe: „${word}“)"; } catch {}
+          try {
+            def2.form_of_note = `Form von „${lemma}“ (Eingabe: „${word}“)`;
+          } catch {}
           return def2;
         }
       }catch{/* egal */}
