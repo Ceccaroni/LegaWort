@@ -9,7 +9,7 @@ window.LEGA_FLAGS = Object.assign(
 /* Dyslexikon – CH-DE
    Keine externen Ressourcen, läuft auf GitHub Pages.
 */
-const state = {
+window.state = {
   data: [],            // kleiner Basis-Datensatz (optional)
   userData: [],        // lokale Importe
   voices: [],
