@@ -1,8 +1,8 @@
+// --- GLOBAL FLAGS (V2 aktiv) ---
 window.LEGA_FLAGS = Object.assign(
   { SAFE_MODE: false, V2_SEARCH: false, V2_RANK: false, V2_MANIFEST_SEARCH: true },
   window.LEGA_FLAGS || {}
 );
-
 
 /* Dyslexikon – CH-DE
    Keine externen Ressourcen, läuft auf GitHub Pages.
