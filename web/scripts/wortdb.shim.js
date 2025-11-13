@@ -91,14 +91,7 @@ function defPath(w){
   return `${BASE}/${p}/${f}.json`;
 }
 async function fetchLocalDef(w){
-  const url = defPath(w);
-  const res = await fetch(url, { cache: "force-cache" });
-  if (!res.ok) throw new Error(`404 ${url}`);
-  const data = await res.json();
-  normalizeSilbenField(data);
-  await applyHyphenation(w, data);
-  console.info("def local fetch", w, url);
-  return data;
+  throw new Error("no-local-def");
 }
 
 const POS_MAP = {
