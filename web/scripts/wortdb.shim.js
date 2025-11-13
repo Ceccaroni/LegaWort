@@ -267,9 +267,12 @@ function mapWiktextract(wort, raw){
 }
 
 async function fetchRemoteDef(w){
+  if(!w || typeof w !== "string"){
+    throw new Error("invalid-word");
+  }
   const normed = w.normalize("NFC").trim();
-const safe = encodeURIComponent(normed);
-const url = `${REMOTE_BASE}/${safe}.json`;
+  const safe = encodeURIComponent(normed);
+  const url = `${REMOTE_BASE}/${safe}.json`;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`remote ${res.status} ${url}`);
   const data = await res.json();
