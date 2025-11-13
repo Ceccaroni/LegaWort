@@ -1,10 +1,10 @@
-// --- SAFE MODE FLAGS (HF2) ---
-window.LEGA_FLAGS = Object.assign(
-  { SAFE_MODE: true, V2_SEARCH: false, V2_RANK: false, V2_MANIFEST_SEARCH: false },
-  window.LEGA_FLAGS || {}
-);
-window.addEventListener("error", (e) => console.error("global error", e.message));
-// --- END SAFE MODE FLAGS ---
+// --- GLOBAL FLAGS (V2 aktiv) ---
+window.LEGA_FLAGS = {
+  SAFE_MODE: false,
+  V2_SEARCH: true,
+  V2_RANK: true,
+  V2_MANIFEST_SEARCH: true
+};
 
 /* Dyslexikon – CH-DE
    Keine externen Ressourcen, läuft auf GitHub Pages.
