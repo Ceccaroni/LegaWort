@@ -733,6 +733,40 @@ async function doSearch(input){
 
   runSearch(input);
 }
+/* ===========================================================
+   NEU: Index-Loader für public/index/index.json
+   =========================================================== */
+async function ensureIndex(){
+  if(state.indexV2 && typeof state.indexV2 === 'object'){
+    state.prefixLen = 2;
+    return state.indexV2;
+  }
+
+  if(window._indexV2Promise){
+    return window._indexV2Promise;
+  }
+
+  window._indexV2Promise = fetch('public/index/index.json')
+    .then(r => {
+      if(!r.ok) throw new Error('index.json ' + r.status);
+      return r.json();
+    })
+    .then(obj => {
+      if(obj && typeof obj === 'object'){
+        state.indexV2 = obj.prefixes || {};
+        state.prefixLen = obj.prefixLen || 2;
+      }
+      return state.indexV2;
+    })
+    .catch(err => {
+      console.error('index.json nicht verfügbar', err);
+      state.indexV2 = {};
+      state.prefixLen = 2;
+      return state.indexV2;
+    });
+
+  return window._indexV2Promise;
+}
 
 async function runSearch(input){
   try {
