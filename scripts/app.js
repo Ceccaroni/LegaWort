@@ -61,7 +61,8 @@ function clearSettingsPanelVars(){
   }
 
   // Chunk-Index (für grosse Listen, optional)
-  await ensureChunkIndex();
+  state.chunkIndex = null;
+state.chunkPrefixLen = 2;   // oder wieder entfernen
 
   ensureHyphenation();
 
