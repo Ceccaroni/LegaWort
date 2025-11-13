@@ -6,6 +6,13 @@
   <title>Dyslexikon (CH-DE)</title>
   <meta name="description" content="Offline-fähiges Wörterbuch für den Unterricht. Schweizer Orthografie, ohne externe Ressourcen." />
   <link rel="stylesheet" href="styles/main.css" />
+
+  <!-- Flags: Manifest-V2-Suche aktivieren, nur lokale Defs -->
+  <script>
+    window.LEGA_FLAGS = window.LEGA_FLAGS || {};
+    LEGA_FLAGS.V2_MANIFEST_SEARCH = true;
+    LEGA_FLAGS.LOCAL_DEFS_ONLY = true;
+  </script>
 </head>
 <body>
   <!-- SVG-Sprite einmalig im DOM versteckt -->
@@ -14,6 +21,7 @@
       <path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21H8v2h8v-2h-3v-2.08A7 7 0 0 0 19 12h-2Z"/>
     </symbol>
   </svg>
+
 <header class="app-header" role="banner">
   <div class="header-bar">
     <h1>Dyslexikon <span class="badge">CH-DE</span></h1>
@@ -90,7 +98,14 @@
 </footer>
 
 <script src="shared/hyphenation.js"></script>
-<script src="/LegaWort/web/scripts/manifest.v2.js"></script>
+
+<!-- WICHTIG: Manifest-V2 VOR app.js laden (ohne defer) -->
+<script src="web/scripts/manifest.v2.js"></script>
+
+<!-- Forms in der Suche berücksichtigen (optional, kann auch danach) -->
+<script src="web/forms_search_patch.js"></script>
+
+<!-- App-Controller -->
 <script src="scripts/app.js?v=104"></script>
 <script type="module" src="/LegaWort/web/scripts/wortdb.shim.js"></script>
 <!-- NEU: Redirect gebeugter Formen → Grundform -->
