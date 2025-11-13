@@ -657,6 +657,14 @@ async function ensureChunkIndex(){
   return chunkIndexState.promise;
 }
 
+function logPrefixState(){
+  console.log('--- ChunkPrefix Diagnose ---');
+  console.log('chunkPrefixLen:', state.chunkPrefixLen);
+  console.log('chunkIndex loaded:', !!state.chunkIndex);
+  console.log('last query:', state.lastQuery);
+  console.log('-----------------------------');
+}
+
 async function collectCandidatesFromManifestsV2(queryNorm, prefixes){
   if(!window.ManifestV2 || !Array.isArray(prefixes) || !prefixes.length){
     return [];
@@ -707,7 +715,22 @@ async function searchV2EntryPoint(queryNorm, prefixes, rankFn){
   return candidates;
 }
 
-function doSearch(input){
+async function doSearch(input){
+  const raw = typeof input === 'string' ? input : '';
+  const trimmed = raw.trim();
+  const q = matchKey(trimmed);
+
+  await ensureChunkIndex();
+
+  const minLen = Number.isFinite(state.chunkPrefixLen)
+    ? state.chunkPrefixLen
+    : 2;
+
+  if(q.length > 0 && q.length < minLen){
+    render([]);
+    return;
+  }
+
   runSearch(input);
 }
 
