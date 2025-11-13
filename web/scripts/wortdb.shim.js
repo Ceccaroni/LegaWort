@@ -293,26 +293,27 @@ window.WortDB.getDefinition = async function (wort) {
 
   const p = (async () => {
     try {
-      const obj = await fetchLocalDef(wort);
-      setCache(wort, obj);
-      return obj;
-    } catch {}
-
-    try {
       const obj = await fetchRemoteDef(wort);
-      setCache(wort, obj);
-      return obj;
-    } catch {}
+      if (obj && typeof obj === "object") {
+        setCache(wort, obj);
+        return obj;
+      }
+    } catch (err) {
+      console.warn("remote-def failed for", wort, err);
+    }
 
+    // fallback – aber gültig, damit UI nicht hängen bleibt
     return {
       wort,
-      def_kid: null,
+      def_kid: "",
+      def_src: { sense: "", pos: "" },
       beispiele: [],
       tags: [],
       source: "none",
       license: null,
       ts_cached: Date.now(),
     };
+
   })();
 
   inflight.set(wort, p);
