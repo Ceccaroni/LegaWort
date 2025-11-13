@@ -737,6 +737,41 @@ async function doSearch(input){
 /* ===========================================================
    NEU: Index-Loader für public/index/index.json
    =========================================================== */
+// --- V2 Index State ---
+state.indexV2 = null;
+state.prefixLen = 2;
+
+// Ermittelt passende Präfixe aus dem Index V2
+function collectIndexPrefixesV2(queryNorm){
+  if(!queryNorm) return [];
+
+  const q = String(queryNorm).trim().toLowerCase();
+  const prefLen = state.prefixLen || 2;
+  if(q.length < prefLen) return [];
+
+  const prefix = q.slice(0, prefLen);
+
+  if(!state.indexV2 || typeof state.indexV2 !== 'object'){
+    return [];
+  }
+
+  // Bevorzugt exakte Treffer
+  if(state.indexV2[prefix]){
+    return [prefix];
+  }
+
+  // Fallbacks: ähnliche Präfixe aus dem Index suchen
+  const out = [];
+  for(const key of Object.keys(state.indexV2)){
+    if(!key || key.length < prefLen) continue;
+    if(key[0] === prefix[0]){
+      out.push(key);
+    }
+  }
+
+  return out.length ? out : [prefix];
+}
+
 async function ensureIndex(){
   if(state.indexV2 && typeof state.indexV2 === 'object'){
     state.prefixLen = 2;
@@ -792,7 +827,34 @@ async function runSearch(input){
     }
 
     // 5. Primäre Suche
-    return await searchV2EntryPoint(input);
+// --- NEU: Index-gestützte Manifest-Suche ---
+const qNorm = matchKey(input);
+
+// Falls kein sinnvoller Query
+if(!qNorm || qNorm.length < (state.prefixLen || 2)){
+  render([]);
+  return [];
+}
+
+// Index laden
+await ensureIndex();
+
+// passende Präfixe gemäss Index V2
+const prefixes = collectIndexPrefixesV2(qNorm);
+
+// Kandidaten abrufen
+let list = [];
+try{
+  list = await searchV2EntryPoint(qNorm, prefixes, rankV2);
+}catch(e){
+  console.error('searchV2EntryPoint Fehler', e);
+  list = [];
+}
+
+// Ausgabe
+render(list, input);
+return list;
+
 
   } catch(err){
     console.error('runSearch FEHLER:', err);
