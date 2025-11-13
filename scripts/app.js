@@ -735,175 +735,35 @@ async function doSearch(input){
 }
 
 async function runSearch(input){
-  const raw = typeof input === 'string' ? input : '';
-  const trimmed = raw.trim();
-  const q = matchKey(trimmed);
-  const qNormV2 = normalizeV2(trimmed);
-  const primaryQuery = qNormV2 || q;
-  if(primaryQuery.length < 2){
-    render([]);
-    return;
-  }
-
-  const prefixLen = Math.max(1, state.chunkPrefixLen || 2);
-  let bucketInfoV2 = { basePrefix: '', fallbackPrefixes: [] };
   try {
-    if (!window.LEGA_FLAGS?.SAFE_MODE && window.LEGA_FLAGS?.V2_SEARCH && typeof collectBucketsV2 === 'function') {
-      const info = collectBucketsV2(primaryQuery);
-      if (info && typeof info === 'object') {
-        bucketInfoV2 = info;
-      }
-    } else {
-      bucketInfoV2 = collectBuckets(primaryQuery);
-    }
-  } catch (err) {
-    console.error('V2 search failed -> fallback', err);
-    bucketInfoV2 = collectBuckets(primaryQuery);
-  }
-  const primaryPrefix = bucketInfoV2.basePrefix || primaryQuery.slice(0, prefixLen);
-  const fallbackPrefixesV2 = bucketInfoV2.fallbackPrefixes || [];
-  const processedPrefixes = new Set();
-  const prefixQueue = [];
-  if(primaryPrefix){ prefixQueue.push(primaryPrefix); }
-
-  const patterns = new Set([primaryQuery]);
-  if(q && q !== primaryQuery){ patterns.add(q); }
-  let manifestResults = [];
-  if(window.LEGA_FLAGS?.V2_MANIFEST_SEARCH){
-    const manifestPrefixes = [];
-    if(primaryPrefix){ manifestPrefixes.push(primaryPrefix); }
-    for(const pref of fallbackPrefixesV2){
-      if(pref){ manifestPrefixes.push(pref); }
-    }
-    const uniquePrefixes = manifestPrefixes.length ? Array.from(new Set(manifestPrefixes)) : [];
-    const manifestRankFn = (lemmas, queryKey)=>{
-      const entries = [];
-      if(!Array.isArray(lemmas) || !lemmas.length){
-        return entries;
-      }
-      for(const lemma of lemmas){
-        if(typeof lemma !== 'string') continue;
-        const wort = lemma.trim();
-        if(!wort) continue;
-        const entry = {
-          wort,
-          erklaerung: '',
-          beispiele: [],
-          tags: []
-        };
-        entry._matchKey = matchKey(wort);
-        entries.push(entry);
-        if(entries.length >= SEARCH_POOL_LIMIT) break;
-      }
-      if(!entries.length){
-        return entries;
-      }
-      const patternClone = new Set(patterns);
-      return filterMatches(entries, patternClone, queryKey).slice(0, SEARCH_MAX_RESULTS);
-    };
-    manifestResults = await searchV2EntryPoint(primaryQuery, uniquePrefixes, manifestRankFn);
-  }
-  if(Array.isArray(manifestResults) && manifestResults.length){
-    render(manifestResults.slice(0, SEARCH_MAX_RESULTS), trimmed);
-    return;
-  }
-  const variantsToConsider = [];
-  const seenKeys = new Map();
-  const candidates = [];
-
-  function addEntry(entry, replace=false, keyOverride){
-    const key = keyOverride || entryKey(entry);
-    if(!key) return false;
-    if(seenKeys.has(key)){
-      if(replace){
-        const idx = seenKeys.get(key);
-        candidates[idx] = entry;
-      }
-      return false;
-    }
-    seenKeys.set(key, candidates.length);
-    candidates.push(entry);
-    return true;
-  }
-
-  function addFromSource(list, prefix, replace){
-    if(!Array.isArray(list)) return false;
-    for(const entry of list){
-      const key = entryKey(entry);
-      if(!key || !prefix || !key.startsWith(prefix)) continue;
-      const added = addEntry(entry, replace, key);
-      if(added && candidates.length >= SEARCH_POOL_LIMIT) return true;
-    }
-    return false;
-  }
-
-  async function processPrefix(prefix){
-    if(!prefix || processedPrefixes.has(prefix)) return;
-    processedPrefixes.add(prefix);
-
-    if(addFromSource(state.userData, prefix, true)) return;
-
+    // 1. Warte, bis der Chunk-Index vollständig geladen ist
     await ensureChunkIndex();
-    if(state.chunkIndex){
-      const chunkEntries = await ensureChunk(prefix);
-      for(const entry of chunkEntries){
-        const key = entryKey(entry);
-        if(!key.startsWith(prefix)) continue;
-        const added = addEntry(entry, false, key);
-        if(added && candidates.length >= SEARCH_POOL_LIMIT) return;
-      }
+
+    // 2. Fallback, falls der Index fehlt
+    if(!Number.isFinite(state.chunkPrefixLen)){
+      console.warn('runSearch: chunkPrefixLen nicht gesetzt – Fallback auf 2');
+      state.chunkPrefixLen = 2;
     }
 
-    addFromSource(state.data, prefix, false);
-  }
-
-  while(prefixQueue.length){
-    const pref = prefixQueue.shift();
-    await processPrefix(pref);
-  }
-
-  let results = filterMatches(candidates, patterns, primaryQuery).slice(0, SEARCH_MAX_RESULTS);
-
-  if(results.length < SEARCH_MIN_PRIMARY && fallbackPrefixesV2.length){
-    for(const pref of fallbackPrefixesV2){
-      if(candidates.length >= SEARCH_POOL_LIMIT) break;
-      if(!pref || processedPrefixes.has(pref)) continue;
-      prefixQueue.push(pref);
-      while(prefixQueue.length){
-        const nextPref = prefixQueue.shift();
-        await processPrefix(nextPref);
-        if(candidates.length >= SEARCH_POOL_LIMIT) break;
-      }
-      results = filterMatches(candidates, patterns, primaryQuery).slice(0, SEARCH_MAX_RESULTS);
-      if(results.length >= SEARCH_MIN_PRIMARY) break;
-    }
-  }
-
-  if(results.length < SEARCH_MIN_PRIMARY){
-    const variantSet = expandAnlautVariants(primaryQuery);
-    for(const variant of variantSet){
-      if(variant.length < 2) continue;
-      if(!patterns.has(variant)){
-        patterns.add(variant);
-        variantsToConsider.push(variant);
-      }
+    // 3. Sicherstellen, dass state.data verfügbar ist
+    if(!Array.isArray(state.data) || state.data.length === 0){
+      console.warn('runSearch: state.data leer – lade erneut');
+      await loadData();
     }
 
-    for(const variant of variantsToConsider){
-      if(candidates.length >= SEARCH_POOL_LIMIT) break;
-      const pref = variant.slice(0, prefixLen);
-      if(!pref || processedPrefixes.has(pref)) continue;
-      prefixQueue.push(pref);
-      while(prefixQueue.length){
-        const nextPref = prefixQueue.shift();
-        await processPrefix(nextPref);
-      }
-      results = filterMatches(candidates, patterns, primaryQuery).slice(0, SEARCH_MAX_RESULTS);
-      if(results.length >= SEARCH_MIN_PRIMARY) break;
+    // 4. Sichere Initialisierung von userData
+    if(!Array.isArray(state.userData)){
+      state.userData = [];
     }
-  }
 
-  render(results.slice(0, SEARCH_MAX_RESULTS), trimmed);
+    // 5. Primäre Suche
+    return await searchV2EntryPoint(input);
+
+  } catch(err){
+    console.error('runSearch FEHLER:', err);
+    render([]); 
+    return [];
+  }
 }
 
 function filterMatches(list, patterns, baseQuery){
