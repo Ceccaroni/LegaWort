@@ -594,37 +594,30 @@ function replaceAtStart(str, from, to, limit){
 }
 
 async function ensureChunk(prefix){
-  await ensureChunkIndex();
-  if(!state.chunkIndex) return [];
-  const p = prefix.toLowerCase();
-  if(state.chunkCache.has(p)) return state.chunkCache.get(p);
-  const file = state.chunkIndex.prefixes?.[p];
-  if(!file) { state.chunkCache.set(p, []); return []; }
+  if(!prefix || typeof prefix !== "string") return [];
+
+  // Unser echtes System: Ordner = die ersten zwei Buchstaben
+  const realPrefix = prefix.slice(0,2).toLowerCase();
+
+  if(state.chunkCache.has(realPrefix)){
+    return state.chunkCache.get(realPrefix);
+  }
+
+  const url = `public/index/${realPrefix}/lemmas.json`;
+
   try{
-    const res = await fetch(`data/_chunks/${file}`);
-    if(!res.ok) throw new Error(res.status);
-    const obj = await res.json();
-    const list = Array.isArray(obj) ? obj.map(s=>({wort:String(s)})) : (obj.entries || obj || []);
-    const mapped = list.map(e => {
-      const wort = (e.wort||e.word||String(e)).replace(/ß/g,'ss').trim();
-      const entry = {
-        wort,
-        silben: e.silben ? String(e.silben).split(/[-·\s]/).filter(Boolean) : [],
-        erklaerung: (e.erklaerung||e.definition||'').trim(),
-        beispiele: e.beispiele ? (Array.isArray(e.beispiele)?e.beispiele:String(e.beispiele).split(/\s*[|]\s*/).filter(Boolean)) : [],
-        tags: e.tags ? (Array.isArray(e.tags)?e.tags:String(e.tags).split(/\s*[,;]\s*/).filter(Boolean)) : []
-      };
-      entry._matchKey = matchKey(entry.wort);
-      return entry;
-    }).filter(x=>x.wort);
-    state.chunkCache.set(p, mapped);
-    return mapped;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error("404");
+    const arr = await res.json();
+    state.chunkCache.set(realPrefix, arr);
+    return arr;
   }catch(err){
-    console.warn('Chunk-Load fehlgeschlagen', p, err);
-    state.chunkCache.set(p, []);
+    console.warn("Chunk nicht gefunden:", realPrefix, url);
+    state.chunkCache.set(realPrefix, []);
     return [];
   }
 }
+
 
 async function ensureChunkIndex(){
   if(state.chunkIndex && typeof state.chunkIndex === 'object'){
