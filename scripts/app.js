@@ -1,3 +1,5 @@
+console.log("SCRIPT LÄDT? 1");
+
 // --- GLOBAL FLAGS (V2 aktiv) ---
 window.LEGA_FLAGS = Object.assign(
   { SAFE_MODE: false, V2_SEARCH: false, V2_RANK: false, V2_MANIFEST_SEARCH: true },
