@@ -1249,6 +1249,10 @@ function render(list, query=''){
 }
 
 function renderCard(entry, query){
+  if(!entry || !entry.wort){
+  console.error("RENDER-CARD OHNE WORT:", entry);
+  return document.createElement('div');
+}
   const card = document.createElement('article');
   card.className = 'card';
   card.tabIndex = 0;
