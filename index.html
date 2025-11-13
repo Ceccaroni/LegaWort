@@ -107,31 +107,9 @@
 
 <!-- App-Controller -->
 <script src="scripts/app.js?v=104"></script>
-
-<!-- Wort-DB (Definitionen) -->
-<script type="module" src="web/scripts/wortdb.shim.js"></script>
-
-<!-- Remote-Definitionen strikt deaktivieren (nur lokal) -->
-<script>
-  window.LEGA_FLAGS = window.LEGA_FLAGS || {};
-  LEGA_FLAGS.LOCAL_DEFS_ONLY = true;
-  (function blockRemote(){
-    function apply(){
-      if (window.WortDB && typeof window.WortDB.fetchRemoteDef === "function") {
-        window.WortDB.fetchRemoteDef = async () => null;
-        console.info("[local_defs_only] Aktiv: Remote-Definitionen deaktiviert.");
-        return true;
-      }
-      return false;
-    }
-    if (!apply()){
-      let tries = 0;
-      const t = setInterval(() => { tries++; if (apply() || tries > 40) clearInterval(t); }, 100);
-    }
-  })();
-</script>
-
-<!-- Redirect für gebeugte Formen beim Laden der Definition -->
+<script type="module" src="/LegaWort/web/scripts/wortdb.shim.js"></script>
+<!-- NEU: Redirect gebeugter Formen → Grundform -->
 <script src="web/forms_redirect.js"></script>
+<script src="./web/scripts/manifest.v2.js" defer></script>
 </body>
 </html>
