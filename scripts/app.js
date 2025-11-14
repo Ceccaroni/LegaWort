@@ -668,54 +668,79 @@ function logPrefixState(){
 //  console.log('-----------------------------');
 }
 
-async function collectCandidatesFromManifestsV2(queryNorm, prefixes){
-  if(!window.ManifestV2 || !Array.isArray(prefixes) || !prefixes.length){
+async function collectCandidatesFromManifestsV2(prefix){
+  if(!prefix || typeof prefix !== "string"){
     return [];
   }
-  try{
-    const lists = await Promise.all(prefixes.map(pref => {
-      if(!pref || typeof pref !== 'string'){ return Promise.resolve([]); }
-      return window.ManifestV2.loadManifestV2(pref).catch(() => []);
-    }));
-    const dedup = new Set();
-    for(const list of lists){
-      if(!Array.isArray(list)) continue;
-      for(const item of list){
-        if(typeof item !== 'string') continue;
-        const normalized = item.trim();
-        if(normalized){
-          dedup.add(normalized);
-        }
-      }
+
+  // Pfad: public/index/{prefix}/lemmas.json
+  const url = `public/index/${prefix}/lemmas.json`;
+
+  try {
+    const res = await fetch(url);
+    if(!res.ok){
+      // kein Manifest für dieses Prefix
+      return [];
     }
-    return Array.from(dedup);
-  }catch(err){
-    console.error('collectCandidatesFromManifestsV2 failed', err);
+
+    const arr = await res.json();
+
+    // Erwartete Struktur: [{ wort: "Hund" }, { wort: "Hunger" }, …]
+    if(!Array.isArray(arr)){
+      return [];
+    }
+
+    // dedupe auf Basis des Wortes
+    const out = [];
+    const seen = new Set();
+
+    for(const item of arr){
+      if(!item || typeof item !== "object") continue;
+      const w = item.wort;
+      if(typeof w !== "string") continue;
+      if(seen.has(w)) continue;
+      seen.add(w);
+      out.push(item);
+    }
+
+    return out;
+
+  } catch (e) {
+    console.warn("Manifest konnte nicht geladen werden:", prefix, e);
     return [];
   }
 }
 
 async function searchV2EntryPoint(queryNorm, prefixes, rankFn){
-  let candidates = [];
-  if(window.LEGA_FLAGS?.V2_MANIFEST_SEARCH && Array.isArray(prefixes) && prefixes.length){
-    try{
-      const lemmas = await collectCandidatesFromManifestsV2(queryNorm, prefixes);
-      if(Array.isArray(lemmas) && lemmas.length){
-        if(typeof rankFn === 'function'){
-          candidates = rankFn(lemmas, queryNorm) || [];
-        }else{
-          candidates = lemmas.slice();
-        }
-      }
-    }catch(err){
-      console.error('V2 manifest search failed, falling back', err);
-      candidates = [];
-    }
-  }
-  if(!Array.isArray(candidates)){
+  if(!queryNorm || !Array.isArray(prefixes) || prefixes.length === 0){
     return [];
   }
-  return candidates;
+
+  let all = [];
+
+  for(const pref of prefixes){
+    try{
+      const arr = await collectCandidatesFromManifestsV2(pref);
+      if(Array.isArray(arr) && arr.length){
+        all = all.concat(arr);
+      }
+    }catch(e){
+      console.warn("Manifest-Ladevorgang fehlgeschlagen:", pref, e);
+    }
+  }
+
+  // Wenn nichts gefunden → leere Liste
+  if(all.length === 0){
+    return [];
+  }
+
+  // RankFn anwenden
+  if(typeof rankFn === "function"){
+    const out = rankFn(all, queryNorm);
+    return Array.isArray(out) ? out : [];
+  }
+
+  return all;
 }
 
 async function doSearch(input){
