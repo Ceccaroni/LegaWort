@@ -517,69 +517,74 @@ function expandAnlautVariants(query){
 
 function collectBuckets(queryNorm){
   const q = typeof queryNorm === 'string' ? queryNorm : '';
-//  const prefixLen = Math.max(1, state.chunkPrefixLen || 2);
-  const basePrefix = q.slice(0, prefixLen);
+  const basePrefix = q.slice(0, 2);  // neuer fixer Präfix: 2 Zeichen
   return {
     basePrefix,
     fallbackPrefixes: []
   };
 }
 
+
 function collectBucketsV2(queryNorm, options){
   const q = typeof queryNorm === 'string' ? queryNorm : '';
   if(!q) return { basePrefix: '', fallbackPrefixes: [] };
-//  const prefixLen = Math.max(1, state.chunkPrefixLen || 2);
-  const minLength = Math.min(2, prefixLen);
+
+  // Fester Präfix für neue Manifest-Struktur: 2 Zeichen
+  const prefixLen = 2;
+
+  // Mindestlänge für Präfixe
+  const minLength = 2;
+
+  // Limit für fallback-Prefixes
   const limit = Math.max(5, options?.maxFallback || 50);
+
+  // Hauptpräfix
   const basePrefix = q.slice(0, prefixLen);
+
   const seen = new Set();
   if(basePrefix) seen.add(basePrefix);
+
   const fallback = [];
 
   const push = (pref)=>{
     if(!pref) return;
     if(pref.length < minLength) return;
     if(seen.has(pref)) return;
-    seen.add(pref);
     if(fallback.length >= limit) return;
+    seen.add(pref);
     fallback.push(pref);
   };
 
+  // Lautvarianten für häufige Verwechslungen
   const confusionPairs = [
-    ['g', 'k'],
-    ['k', 'g'],
-    ['d', 't'],
-    ['t', 'd'],
-    ['b', 'p'],
-    ['p', 'b'],
-    ['ch', 'k'],
-    ['ch', 'ck'],
-    ['k', 'ch'],
-    ['ck', 'k'],
-    ['sch', 'ch'],
-    ['ch', 'sch'],
-    ['ae', 'e'],
-    ['e', 'ae'],
-    ['ei', 'ie'],
-    ['ie', 'ei']
+    ['g', 'k'], ['k', 'g'],
+    ['d', 't'], ['t', 'd'],
+    ['b', 'p'], ['p', 'b'],
+    ['ch', 'k'], ['ch', 'ck'],
+    ['k', 'ch'], ['ck', 'k'],
+    ['sch', 'ch'], ['ch', 'sch'],
+    ['ae', 'e'], ['e', 'ae'],
+    ['ei', 'ie'], ['ie', 'ei']
   ];
 
   for(const [from, to] of confusionPairs){
     if(fallback.length >= limit) break;
     if(!from || !to) continue;
+
     let idx = q.indexOf(from);
     while(idx !== -1 && idx < prefixLen){
       const replaced = `${q.slice(0, idx)}${to}${q.slice(idx + from.length)}`;
       const pref = replaced.slice(0, prefixLen);
       push(pref);
+
       if(fallback.length >= limit) break;
       idx = q.indexOf(from, idx + 1);
     }
-    if(fallback.length >= limit) break;
   }
 
   return { basePrefix, fallbackPrefixes: fallback };
 }
+
 
 function replaceAtStart(str, from, to, limit){
   const out = [];
@@ -593,30 +598,32 @@ function replaceAtStart(str, from, to, limit){
   return out;
 }
 
+// ALT-CHUNK-SYSTEM DEAKTIVIERT
 // async function ensureChunk(prefix){
-  if(!prefix || typeof prefix !== "string") return [];
+//   if(!prefix || typeof prefix !== "string") return [];
+//
+//   // Unser echtes System: Ordner = die ersten zwei Buchstaben
+//   const realPrefix = prefix.slice(0,2).toLowerCase();
+//
+//   // if(state.chunkCache.has(realPrefix)){
+//   //   return state.chunkCache.get(realPrefix);
+//   // }
+//
+//   const url = `public/index/${realPrefix}/lemmas.json`;
+//
+//   try{
+//     const res = await fetch(url);
+//     if(!res.ok) throw new Error("404");
+//     const arr = await res.json();
+//     // state.chunkCache.set(realPrefix, arr);
+//     return arr;
+//   }catch(err){
+//     // console.warn("Chunk nicht gefunden:", realPrefix, url);
+//     // state.chunkCache.set(realPrefix, []);
+//     return [];
+//   }
+// }
 
-  // Unser echtes System: Ordner = die ersten zwei Buchstaben
-  const realPrefix = prefix.slice(0,2).toLowerCase();
-
-//  if(state.chunkCache.has(realPrefix)){
-//    return state.chunkCache.get(realPrefix);
-  }
-
-  const url = `public/index/${realPrefix}/lemmas.json`;
-
-  try{
-    const res = await fetch(url);
-    if(!res.ok) throw new Error("404");
-    const arr = await res.json();
- //   state.chunkCache.set(realPrefix, arr);
-    return arr;
-  }catch(err){
-//    console.warn("Chunk nicht gefunden:", realPrefix, url);
-//    state.chunkCache.set(realPrefix, []);
-    return [];
-  }
-}
 
 // ALT-CHUNK-SYSTEM DEAKTIVIERT
 // async function ensureChunkIndex(){
