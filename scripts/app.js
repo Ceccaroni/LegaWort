@@ -672,47 +672,20 @@ async function collectCandidatesFromManifestsV2(prefix){
   if(!prefix || typeof prefix !== "string"){
     return [];
   }
-  
-function manifestItemToEntry(item){
-  // item kommt aus lemmas.json: { wort: "Hund" }
 
-  if(!item || typeof item !== "object"){
-    return null;
-  }
-
-  const w = item.wort;
-  if(typeof w !== "string" || !w.trim()){
-    return null;
-  }
-
-  return {
-    wort: w,
-    wortart: null,
-    flexion: null,
-    info: null,
-    def: null,
-    source: "manifest"
-  };
-}
-
-  // Pfad: public/index/{prefix}/lemmas.json
   const url = `public/index/${prefix}/lemmas.json`;
 
   try {
     const res = await fetch(url);
     if(!res.ok){
-      // kein Manifest für dieses Prefix
       return [];
     }
 
     const arr = await res.json();
-
-    // Erwartete Struktur: [{ wort: "Hund" }, { wort: "Hunger" }, …]
     if(!Array.isArray(arr)){
       return [];
     }
 
-    // dedupe auf Basis des Wortes
     const out = [];
     const seen = new Set();
 
@@ -732,7 +705,25 @@ function manifestItemToEntry(item){
     return [];
   }
 }
+function manifestItemToEntry(item){
+  if(!item || typeof item !== "object"){
+    return null;
+  }
 
+  const w = item.wort;
+  if(typeof w !== "string" || !w.trim()){
+    return null;
+  }
+
+  return {
+    wort: w,
+    wortart: null,
+    flexion: null,
+    info: null,
+    def: null,
+    source: "manifest"
+  };
+}
 async function searchV2EntryPoint(queryNorm, prefixes, rankFn){
   if(!queryNorm || !Array.isArray(prefixes) || prefixes.length === 0){
     return [];
@@ -744,19 +735,20 @@ async function searchV2EntryPoint(queryNorm, prefixes, rankFn){
     try{
       const arr = await collectCandidatesFromManifestsV2(pref);
       if(Array.isArray(arr) && arr.length){
-        all = all.concat(arr);
+        const entries = arr
+          .map(manifestItemToEntry)
+          .filter(Boolean);
+        all = all.concat(entries);
       }
     }catch(e){
       console.warn("Manifest-Ladevorgang fehlgeschlagen:", pref, e);
     }
   }
 
-  // Wenn nichts gefunden → leere Liste
   if(all.length === 0){
     return [];
   }
 
-  // RankFn anwenden
   if(typeof rankFn === "function"){
     const out = rankFn(all, queryNorm);
     return Array.isArray(out) ? out : [];
@@ -765,6 +757,7 @@ async function searchV2EntryPoint(queryNorm, prefixes, rankFn){
   return all;
 }
 
+  
 async function doSearch(input){
   const raw = typeof input === 'string' ? input : '';
   const trimmed = raw.trim();
