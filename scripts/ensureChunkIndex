@@ -23,9 +23,9 @@ window.state = {
   lastQuery: '',
   learnWords: [],
   // Grossdatensatz via Prefix-Chunks (optional)
-  chunkIndex: null,        // { prefixLen: 2, prefixes: { "aa": "aa.json", ... } }
-  chunkCache: new Map(),   // prefix -> Array<{wort,...}>
-  chunkPrefixLen: 2,
+//  chunkIndex: null,        // { prefixLen: 2, prefixes: { "aa": "aa.json", ... } }
+//  chunkCache: new Map(),   // prefix -> Array<{wort,...}>
+//  chunkPrefixLen: 2,
   hyphenation: null
 };
 
@@ -33,7 +33,7 @@ const $ = sel => document.querySelector(sel);
 const resultsEl = $('#results');
 const rulerEl = $('#ruler');
 const hyphenationState = { compiled: null, promise: null };
-const chunkIndexState = { promise: null };
+// const chunkIndexState = { promise: null };
 const DEF_NEEDS_STORAGE_KEY = 'lw_def_needs';
 const SETTINGS_PANEL_VARS = [
   '--settings-panel-top',
@@ -63,8 +63,8 @@ function clearSettingsPanelVars(){
   }
 
   // Chunk-Index (für grosse Listen, optional)
-  state.chunkIndex = null;
-state.chunkPrefixLen = 2;   // oder wieder entfernen
+//  state.chunkIndex = null;
+// state.chunkPrefixLen = 2;   // oder wieder entfernen
 
   ensureHyphenation();
 
@@ -490,7 +490,7 @@ function expandAnlautVariants(query){
   const q = matchKey(query);
   if(!q) return new Set();
   const variants = new Set([q]);
-  const limit = Math.max(state.chunkPrefixLen || 2, 2);
+//  const limit = Math.max(state.chunkPrefixLen || 2, 2);
   const queue = [q];
 
   const enqueue = (candidate)=>{
@@ -517,7 +517,7 @@ function expandAnlautVariants(query){
 
 function collectBuckets(queryNorm){
   const q = typeof queryNorm === 'string' ? queryNorm : '';
-  const prefixLen = Math.max(1, state.chunkPrefixLen || 2);
+//  const prefixLen = Math.max(1, state.chunkPrefixLen || 2);
   const basePrefix = q.slice(0, prefixLen);
   return {
     basePrefix,
@@ -528,7 +528,7 @@ function collectBuckets(queryNorm){
 function collectBucketsV2(queryNorm, options){
   const q = typeof queryNorm === 'string' ? queryNorm : '';
   if(!q) return { basePrefix: '', fallbackPrefixes: [] };
-  const prefixLen = Math.max(1, state.chunkPrefixLen || 2);
+//  const prefixLen = Math.max(1, state.chunkPrefixLen || 2);
   const minLength = Math.min(2, prefixLen);
   const limit = Math.max(5, options?.maxFallback || 50);
   const basePrefix = q.slice(0, prefixLen);
@@ -593,14 +593,14 @@ function replaceAtStart(str, from, to, limit){
   return out;
 }
 
-async function ensureChunk(prefix){
+// async function ensureChunk(prefix){
   if(!prefix || typeof prefix !== "string") return [];
 
   // Unser echtes System: Ordner = die ersten zwei Buchstaben
   const realPrefix = prefix.slice(0,2).toLowerCase();
 
-  if(state.chunkCache.has(realPrefix)){
-    return state.chunkCache.get(realPrefix);
+//  if(state.chunkCache.has(realPrefix)){
+//    return state.chunkCache.get(realPrefix);
   }
 
   const url = `public/index/${realPrefix}/lemmas.json`;
@@ -609,56 +609,56 @@ async function ensureChunk(prefix){
     const res = await fetch(url);
     if(!res.ok) throw new Error("404");
     const arr = await res.json();
-    state.chunkCache.set(realPrefix, arr);
+ //   state.chunkCache.set(realPrefix, arr);
     return arr;
   }catch(err){
-    console.warn("Chunk nicht gefunden:", realPrefix, url);
-    state.chunkCache.set(realPrefix, []);
+//    console.warn("Chunk nicht gefunden:", realPrefix, url);
+//    state.chunkCache.set(realPrefix, []);
     return [];
   }
 }
 
-
-async function ensureChunkIndex(){
-  if(state.chunkIndex && typeof state.chunkIndex === 'object'){
-    if(typeof state.chunkIndex.prefixLen === 'number'){
-      state.chunkPrefixLen = state.chunkIndex.prefixLen;
-    }
-    return state.chunkIndex;
-  }
-  if(chunkIndexState.promise){
-    return chunkIndexState.promise;
-  }
-  chunkIndexState.promise = fetch('data/_chunks/index.json')
-    .then(res => {
-      if(!res.ok) throw new Error(`chunk index ${res.status}`);
-      return res.json();
-    })
-    .then(obj => {
-      if(obj && typeof obj === 'object'){
-        state.chunkIndex = obj;
-        if(typeof obj.prefixLen === 'number'){
-          state.chunkPrefixLen = obj.prefixLen;
-        }
-      }
-      return state.chunkIndex;
-    })
-    .catch(err => {
-      console.warn('Chunk-Index nicht verfügbar', err);
-      return state.chunkIndex;
+// ALT-CHUNK-SYSTEM DEAKTIVIERT
+// async function ensureChunkIndex(){
+//  if(state.chunkIndex && typeof state.chunkIndex === 'object'){
+//    if(typeof state.chunkIndex.prefixLen === 'number'){
+//      state.chunkPrefixLen = state.chunkIndex.prefixLen;
+//    }
+//    return state.chunkIndex;
+//  }
+//  if(chunkIndexState.promise){
+//    return chunkIndexState.promise;
+//  }
+//  chunkIndexState.promise = fetch('data/_chunks/index.json')
+//    .then(res => {
+//      if(!res.ok) throw new Error(`chunk index ${res.status}`);
+//      return res.json();
+//    })
+ //   .then(obj => {
+ //     if(obj && typeof obj === 'object'){
+  //      state.chunkIndex = obj;
+  //      if(typeof obj.prefixLen === 'number'){
+  //        state.chunkPrefixLen = obj.prefixLen;
+  //     }
+  //    }
+  //    return state.chunkIndex;
+  //  })
+  //  .catch(err => {
+   //   console.warn('Chunk-Index nicht verfügbar', err);
+   //   return state.chunkIndex;
     })
     .finally(() => {
-      chunkIndexState.promise = null;
-    });
-  return chunkIndexState.promise;
-}
+  //    chunkIndexState.promise = null;
+  //  });
+//  return chunkIndexState.promise;
+// }
 
 function logPrefixState(){
-  console.log('--- ChunkPrefix Diagnose ---');
-  console.log('chunkPrefixLen:', state.chunkPrefixLen);
-  console.log('chunkIndex loaded:', !!state.chunkIndex);
-  console.log('last query:', state.lastQuery);
-  console.log('-----------------------------');
+//  console.log('--- ChunkPrefix Diagnose ---');
+//  console.log('chunkPrefixLen:', state.chunkPrefixLen);
+//  console.log('chunkIndex loaded:', !!state.chunkIndex);
+//  console.log('last query:', state.lastQuery);
+//  console.log('-----------------------------');
 }
 
 async function collectCandidatesFromManifestsV2(queryNorm, prefixes){
@@ -716,7 +716,8 @@ async function doSearch(input){
   const trimmed = raw.trim();
   const q = matchKey(trimmed);
 
-  await ensureChunkIndex();
+  // ALT-CHUNK-SYSTEM DEAKTIVIERT
+  // await ensureChunkIndex();
 
   const minLen = Number.isFinite(state.chunkPrefixLen)
     ? state.chunkPrefixLen
@@ -802,12 +803,13 @@ async function ensureIndex(){
 async function runSearch(input){
   try {
     // 1. Warte, bis der Chunk-Index vollständig geladen ist
-    await ensureChunkIndex();
+   // ALT-CHUNK-SYSTEM DEAKTIVIERT
+   // await ensureChunkIndex();
 
     // 2. Fallback, falls der Index fehlt
-    if(!Number.isFinite(state.chunkPrefixLen)){
-      console.warn('runSearch: chunkPrefixLen nicht gesetzt – Fallback auf 2');
-      state.chunkPrefixLen = 2;
+  //  if(!Number.isFinite(state.chunkPrefixLen)){
+  //    console.warn('runSearch: chunkPrefixLen nicht gesetzt – Fallback auf 2');
+   //   state.chunkPrefixLen = 2;
     }
 
     // 3. Sicherstellen, dass state.data verfügbar ist
