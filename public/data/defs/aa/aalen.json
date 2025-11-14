@@ -1,0 +1,18 @@
+{
+  "wort": "aalen",
+  "def_src": {
+    "pos": "Verb",
+    "sense": "Sich wohlig entspannen oder sonnen"
+  },
+  "def_kid": null,
+  "beispiele": [
+    "Wir aalten uns am Strand."
+  ],
+  "tags": [
+    "Verb"
+  ],
+  "source": "wiktionary",
+  "via": "wiktextract",
+  "license": "CC-BY-SA 4.0",
+  "ts_cached": 0
+}
