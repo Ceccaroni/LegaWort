@@ -672,6 +672,28 @@ async function collectCandidatesFromManifestsV2(prefix){
   if(!prefix || typeof prefix !== "string"){
     return [];
   }
+  
+function manifestItemToEntry(item){
+  // item kommt aus lemmas.json: { wort: "Hund" }
+
+  if(!item || typeof item !== "object"){
+    return null;
+  }
+
+  const w = item.wort;
+  if(typeof w !== "string" || !w.trim()){
+    return null;
+  }
+
+  return {
+    wort: w,
+    wortart: null,
+    flexion: null,
+    info: null,
+    def: null,
+    source: "manifest"
+  };
+}
 
   // Pfad: public/index/{prefix}/lemmas.json
   const url = `public/index/${prefix}/lemmas.json`;
