@@ -646,8 +646,8 @@ function replaceAtStart(str, from, to, limit){
   //  .catch(err => {
    //   console.warn('Chunk-Index nicht verfügbar', err);
    //   return state.chunkIndex;
-    })
-    .finally(() => {
+ //   })
+ //   .finally(() => {
   //    chunkIndexState.promise = null;
   //  });
 //  return chunkIndexState.promise;
